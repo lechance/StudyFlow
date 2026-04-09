@@ -17,12 +17,35 @@ export async function GET(request: NextRequest) {
     const db = getDb();
     const { searchParams } = new URL(request.url);
     const includeDeleted = searchParams.get('includeDeleted') === 'true';
+    const planDate = searchParams.get('planDate');
+    const planDateRange = searchParams.get('planDateRange'); // 'today' | 'week' | 'all'
 
     let query = 'SELECT * FROM tasks WHERE user_id = ?';
+    const params: any[] = [user.id];
+
     if (!includeDeleted) {
       query += ' AND is_deleted = 0';
     }
-    query += ' ORDER BY CASE priority WHEN \'high\' THEN 1 WHEN \'medium\' THEN 2 WHEN \'low\' THEN 3 END, deadline ASC';
+
+    // 按计划日期筛选
+    if (planDate) {
+      query += ' AND plan_date = ?';
+      params.push(planDate);
+    } else if (planDateRange === 'today') {
+      const today = new Date().toISOString().split('T')[0];
+      query += ' AND plan_date = ?';
+      params.push(today);
+    } else if (planDateRange === 'week') {
+      const today = new Date();
+      const weekEnd = new Date(today);
+      weekEnd.setDate(today.getDate() + 7);
+      const todayStr = today.toISOString().split('T')[0];
+      const weekEndStr = weekEnd.toISOString().split('T')[0];
+      query += ' AND plan_date >= ? AND plan_date <= ?';
+      params.push(todayStr, weekEndStr);
+    }
+
+    query += ' ORDER BY CASE priority WHEN \'high\' THEN 1 WHEN \'medium\' THEN 2 WHEN \'low\' THEN 3 END, plan_date ASC, deadline ASC';
 
     const tasks = db.prepare(query).all(user.id) as Task[];
 
@@ -72,7 +95,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, category, priority, deadline, estimated_time } = body;
+    const { title, category, priority, deadline, plan_date, estimated_time } = body;
 
     if (!title) {
       return NextResponse.json<ApiResponse>({
@@ -85,9 +108,9 @@ export async function POST(request: NextRequest) {
     const taskId = generateId();
 
     db.prepare(`
-      INSERT INTO tasks (id, user_id, title, category, priority, deadline, estimated_time, status, is_deleted)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0)
-    `).run(taskId, user.id, title, category || '其他', priority || 'medium', deadline || null, estimated_time || null);
+      INSERT INTO tasks (id, user_id, title, category, priority, deadline, plan_date, estimated_time, status, is_deleted)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0)
+    `).run(taskId, user.id, title, category || '其他', priority || 'medium', deadline || null, plan_date || null, estimated_time || null);
 
     const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId) as Task;
 

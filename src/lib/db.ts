@@ -45,6 +45,7 @@ function initializeTables(database: Database.Database) {
       priority TEXT DEFAULT 'medium',
       status TEXT DEFAULT 'pending',
       deadline TEXT,
+      plan_date TEXT,
       estimated_time INTEGER,
       completed_at TEXT,
       is_deleted INTEGER DEFAULT 0,

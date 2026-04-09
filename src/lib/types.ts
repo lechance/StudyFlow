@@ -19,6 +19,7 @@ export interface Task {
   priority: 'high' | 'medium' | 'low';
   status: 'pending' | 'in_progress' | 'completed';
   deadline?: string;
+  plan_date?: string;
   estimated_time?: number;
   completed_at?: string;
   is_deleted: number;

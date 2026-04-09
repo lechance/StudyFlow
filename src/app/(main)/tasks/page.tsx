@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTasks } from '@/hooks/useTasks';
 import { useLanguage } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
@@ -38,6 +38,12 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import {
   Plus,
   Trash2,
   Edit2,
@@ -50,11 +56,18 @@ import {
   Filter,
   SortAsc,
   ListTodo,
-  X
+  X,
+  ChevronDown,
+  ChevronUp,
+  Pin,
+  PinOff,
+  Flame,
+  Target
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { format, differenceInDays, isPast, isToday } from 'date-fns';
+import { format, differenceInDays, isPast, isToday, isTomorrow, addDays, startOfWeek, endOfWeek, isSameWeek } from 'date-fns';
 import { toast } from 'sonner';
+import { tasksApi } from '@/lib/api';
 
 const PRIORITY_CONFIG: Record<string, { labelKey: string; textColor: string }> = {
   high: { labelKey: 'priority.high', textColor: 'text-red-500' },
@@ -62,9 +75,16 @@ const PRIORITY_CONFIG: Record<string, { labelKey: string; textColor: string }> =
   low: { labelKey: 'priority.low', textColor: 'text-green-500' },
 };
 
+type ViewTab = 'all' | 'today' | 'week';
+
 export default function TasksPage() {
+  const { user } = useAuth();
   const { tasks, loading, addTask, updateTask, deleteTask, clearCompleted, fetchTasks } = useTasks();
   const { t, language } = useLanguage();
+  
+  // View state
+  const [activeTab, setActiveTab] = useState<ViewTab>('today');
+  const [todayCollapsed, setTodayCollapsed] = useState(false);
   
   // Get category and priority translations
   const getCategoryLabel = (cat: string) => {
@@ -79,11 +99,15 @@ export default function TasksPage() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [showQuickAddDialog, setShowQuickAddDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
   const [detailTask, setDetailTask] = useState<any>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'priority' | 'deadline'>('priority');
+  
+  // Quick add for today/week
+  const [quickAddTarget, setQuickAddTarget] = useState<{ type: 'today' | 'week'; taskId?: string } | null>(null);
   
   // Subtask state
   const [subtasks, setSubtasks] = useState<any[]>([]);
@@ -95,17 +119,57 @@ export default function TasksPage() {
     category: 'study',
     priority: 'medium',
     deadline: '',
+    plan_date: '',
     estimated_time: ''
   });
 
   // Category keys for form options
   const categoryKeys = ['study', 'work', 'reading', 'exercise', 'other'];
 
+  // Today's date string
+  const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
+
+  // Filter tasks by plan_date
+  const todayTasks = useMemo(() => {
+    return tasks.filter(task => task.plan_date === todayStr);
+  }, [tasks, todayStr]);
+
+  const weekTasks = useMemo(() => {
+    const today = new Date();
+    const weekEnd = addDays(today, 7);
+    return tasks.filter(task => {
+      if (!task.plan_date) return false;
+      const planDate = new Date(task.plan_date);
+      return planDate >= today && planDate <= weekEnd;
+    });
+  }, [tasks]);
+
+  // Stats for different views
+  const todayStats = useMemo(() => {
+    const total = todayTasks.length;
+    const completed = todayTasks.filter(t => t.status === 'completed').length;
+    const pending = todayTasks.filter(t => t.status !== 'completed').length;
+    return { total, completed, pending, progress: total > 0 ? Math.round((completed / total) * 100) : 0 };
+  }, [todayTasks]);
+
+  const weekStats = useMemo(() => {
+    const total = weekTasks.length;
+    const completed = weekTasks.filter(t => t.status === 'completed').length;
+    return { total, completed, progress: total > 0 ? Math.round((completed / total) * 100) : 0 };
+  }, [weekTasks]);
+
   // Filter and sort tasks
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
     
-    // Filter
+    // Filter by view tab
+    if (activeTab === 'today') {
+      result = todayTasks;
+    } else if (activeTab === 'week') {
+      result = weekTasks;
+    }
+    
+    // Additional filter
     if (filterStatus !== 'all') {
       result = result.filter(t => t.status === filterStatus);
     }
@@ -121,16 +185,18 @@ export default function TasksPage() {
       });
     } else {
       result.sort((a, b) => {
-        if (!a.deadline) return 1;
-        if (!b.deadline) return -1;
-        return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        const dateA = a.plan_date || a.deadline;
+        const dateB = b.plan_date || b.deadline;
+        if (!dateA) return 1;
+        if (!dateB) return -1;
+        return new Date(dateA).getTime() - new Date(dateB).getTime();
       });
     }
     
     return result;
-  }, [tasks, filterStatus, filterCategory, sortBy]);
+  }, [tasks, activeTab, todayTasks, weekTasks, filterStatus, filterCategory, sortBy]);
 
-  // Stats
+  // Overall stats
   const stats = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter(t => t.status === 'completed').length;
@@ -139,6 +205,11 @@ export default function TasksPage() {
     const highPriority = tasks.filter(t => t.priority === 'high' && t.status !== 'completed').length;
     return { total, completed, inProgress, pending, highPriority };
   }, [tasks]);
+
+  // Fetch tasks when tab changes
+  useEffect(() => {
+    fetchTasks();
+  }, [activeTab, fetchTasks]);
 
   // Fetch subtasks for a task
   const fetchSubtasks = async (taskId: string) => {
@@ -165,11 +236,9 @@ export default function TasksPage() {
       const newCompleted = currentCompleted ? 0 : 1;
       const res = await api.put('/api/subtasks', { id: subtaskId, completed: newCompleted });
       if (res.success) {
-        // Update local state
         setSubtasks(prev => prev.map(s => 
           s.id === subtaskId ? { ...s, completed: newCompleted } : s
         ));
-        // Refresh task list to update progress
         await fetchTasks();
       }
     } catch (error) {
@@ -217,11 +286,22 @@ export default function TasksPage() {
       return;
     }
 
+    // Auto-set plan_date based on current tab
+    let planDate = newTask.plan_date;
+    if (!planDate) {
+      if (activeTab === 'today') {
+        planDate = todayStr;
+      } else if (activeTab === 'week') {
+        planDate = todayStr; // Default to today for week view
+      }
+    }
+
     const success = await addTask({
       title: newTask.title,
       category: newTask.category,
       priority: newTask.priority as 'high' | 'medium' | 'low',
       deadline: newTask.deadline || undefined,
+      plan_date: planDate || undefined,
       estimated_time: newTask.estimated_time ? parseInt(newTask.estimated_time) : undefined,
       status: 'pending'
     });
@@ -234,9 +314,55 @@ export default function TasksPage() {
         category: 'study', 
         priority: 'medium', 
         deadline: '', 
+        plan_date: '',
         estimated_time: '' 
       });
+      await fetchTasks();
     } else {
+      toast.error(t('common.error'));
+    }
+  };
+
+  // Quick add task to today or this week
+  const handleQuickAddToPlan = async (taskId: string, targetType: 'today' | 'week') => {
+    try {
+      let planDate = todayStr;
+      if (targetType === 'week') {
+        // Find the next available day in the week
+        const today = new Date();
+        const weekEnd = addDays(today, 7);
+        for (let i = 0; i <= 7; i++) {
+          const checkDate = addDays(today, i);
+          const dateStr = format(checkDate, 'yyyy-MM-dd');
+          const hasTaskOnDate = weekTasks.some(t => t.plan_date === dateStr);
+          if (!hasTaskOnDate) {
+            planDate = dateStr;
+            break;
+          }
+        }
+      }
+      
+      const res = await tasksApi.update(taskId, { plan_date: planDate });
+      if (res.success) {
+        toast.success(targetType === 'today' ? t('tasks.addedToToday') : t('tasks.addedToWeek'));
+        await fetchTasks();
+      }
+    } catch (error) {
+      console.error('Failed to add to plan:', error);
+      toast.error(t('common.error'));
+    }
+  };
+
+  // Remove from plan
+  const handleRemoveFromPlan = async (taskId: string) => {
+    try {
+      const res = await tasksApi.update(taskId, { plan_date: null });
+      if (res.success) {
+        toast.success(t('tasks.removedFromPlan'));
+        await fetchTasks();
+      }
+    } catch (error) {
+      console.error('Failed to remove from plan:', error);
       toast.error(t('common.error'));
     }
   };
@@ -249,6 +375,7 @@ export default function TasksPage() {
       category: editingTask.category,
       priority: editingTask.priority,
       deadline: editingTask.deadline || undefined,
+      plan_date: editingTask.plan_date || undefined,
       estimated_time: editingTask.estimated_time ? parseInt(editingTask.estimated_time) : undefined
     });
 
@@ -256,6 +383,7 @@ export default function TasksPage() {
       toast.success(t('tasks.taskUpdated'));
       setShowEditDialog(false);
       setEditingTask(null);
+      await fetchTasks();
     } else {
       toast.error(t('common.error'));
     }
@@ -266,11 +394,13 @@ export default function TasksPage() {
     if (status === 'completed') {
       toast.success(t('common.greatJob'));
     }
+    await fetchTasks();
   };
 
   const handleDeleteTask = async (taskId: string) => {
     await deleteTask(taskId);
     toast.success(t('tasks.taskDeleted'));
+    await fetchTasks();
   };
 
   const handleClearCompleted = async () => {
@@ -278,40 +408,62 @@ export default function TasksPage() {
     await clearCompleted(completedIds);
     setShowClearDialog(false);
     toast.success(t('tasks.cleared'));
+    await fetchTasks();
   };
 
-  const getDeadlineInfo = (deadline: string | undefined) => {
+  const getDeadlineInfo = (task: any) => {
+    const deadline = task.deadline || task.plan_date;
     if (!deadline) return null;
+    
     const deadlineDate = new Date(deadline);
+    const isTodayDate = isToday(deadlineDate);
+    const isTomorrowDate = isTomorrow(deadlineDate);
     const days = differenceInDays(deadlineDate, new Date());
     
-    if (isPast(deadlineDate) && !isToday(deadlineDate)) {
+    if (isPast(deadlineDate) && !isTodayDate) {
       return { 
         text: t('tasks.overdue', { days: Math.abs(days) }), 
         color: 'text-red-500', 
-        urgent: true 
+        urgent: true,
+        label: isTodayDate ? t('tasks.today') : t('tasks.overdue', { days: Math.abs(days) })
       };
     }
-    if (days === 0) {
+    if (isTodayDate) {
       return { 
         text: t('tasks.today'), 
         color: 'text-orange-500', 
-        urgent: true 
+        urgent: true,
+        label: t('tasks.today')
+      };
+    }
+    if (isTomorrowDate) {
+      return { 
+        text: t('tasks.tomorrow'),
+        color: 'text-yellow-500',
+        urgent: false,
+        label: t('tasks.tomorrow')
       };
     }
     if (days <= 3) {
       return { 
         text: t('tasks.daysLeft', { days }), 
         color: 'text-orange-500', 
-        urgent: true 
+        urgent: true,
+        label: t('tasks.daysLeft', { days })
       };
     }
     return { 
-      text: t('common.days', { count: days }), 
+      text: format(deadlineDate, 'MM/dd'),
       color: 'text-muted-foreground', 
-      urgent: false 
+      urgent: false,
+      label: format(deadlineDate, 'MM/dd')
     };
   };
+
+  // Get tasks not in any plan
+  const unPlannedTasks = useMemo(() => {
+    return tasks.filter(task => !task.plan_date && task.status !== 'completed');
+  }, [tasks]);
 
   if (loading) {
     return (
@@ -397,6 +549,14 @@ export default function TasksPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label>{t('tasks.planDate')}</Label>
+                  <Input
+                    type="date"
+                    value={newTask.plan_date}
+                    onChange={(e) => setNewTask({ ...newTask, plan_date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label>{t('tasks.deadline')}</Label>
                   <Input
                     type="date"
@@ -404,16 +564,16 @@ export default function TasksPage() {
                     onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>{t('tasks.estimatedTime')}</Label>
-                  <Input
-                    type="number"
-                    placeholder="30"
-                    min="1"
-                    value={newTask.estimated_time}
-                    onChange={(e) => setNewTask({ ...newTask, estimated_time: e.target.value })}
-                  />
-                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>{t('tasks.estimatedTime')}</Label>
+                <Input
+                  type="number"
+                  placeholder="30"
+                  min="1"
+                  value={newTask.estimated_time}
+                  onChange={(e) => setNewTask({ ...newTask, estimated_time: e.target.value })}
+                />
               </div>
             </div>
             <DialogFooter>
@@ -424,279 +584,572 @@ export default function TasksPage() {
         </Dialog>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="card-hover">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-xs text-muted-foreground">{t('tasks.total')}</p>
-              </div>
+      {/* Stats Cards - Quick Overview */}
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
+        <Card className="card-hover bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-200 dark:border-blue-800">
+          <CardContent className="pt-4 text-center">
+            <div className="w-10 h-10 rounded-lg bg-blue-500/20 mx-auto mb-2 flex items-center justify-center">
+              <Target className="w-5 h-5 text-blue-500" />
             </div>
+            <p className="text-2xl font-bold">{stats.total}</p>
+            <p className="text-xs text-muted-foreground">{t('tasks.total')}</p>
           </CardContent>
         </Card>
         <Card className="card-hover">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-slate-500/10 flex items-center justify-center">
-                <Circle className="w-5 h-5 text-slate-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.pending}</p>
-                <p className="text-xs text-muted-foreground">{t('tasks.pending')}</p>
-              </div>
+          <CardContent className="pt-4 text-center">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 mx-auto mb-2 flex items-center justify-center">
+              <Flame className="w-5 h-5 text-emerald-500" />
             </div>
+            <p className="text-2xl font-bold">{todayStats.progress}%</p>
+            <p className="text-xs text-muted-foreground">{t('tasks.todayProgress')}</p>
           </CardContent>
         </Card>
         <Card className="card-hover">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                <PlayCircle className="w-5 h-5 text-cyan-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.inProgress}</p>
-                <p className="text-xs text-muted-foreground">{t('tasks.inProgress')}</p>
-              </div>
+          <CardContent className="pt-4 text-center">
+            <div className="w-10 h-10 rounded-lg bg-orange-500/10 mx-auto mb-2 flex items-center justify-center">
+              <Calendar className="w-5 h-5 text-orange-500" />
             </div>
+            <p className="text-2xl font-bold">{todayStats.total}</p>
+            <p className="text-xs text-muted-foreground">{t('tasks.todayPlan')}</p>
           </CardContent>
         </Card>
         <Card className="card-hover">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.completed}</p>
-                <p className="text-xs text-muted-foreground">{t('tasks.completed')}</p>
-              </div>
+          <CardContent className="pt-4 text-center">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 mx-auto mb-2 flex items-center justify-center">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
             </div>
+            <p className="text-2xl font-bold">{todayStats.completed}</p>
+            <p className="text-xs text-muted-foreground">{t('tasks.completed')}</p>
+          </CardContent>
+        </Card>
+        <Card className="card-hover">
+          <CardContent className="pt-4 text-center">
+            <div className="w-10 h-10 rounded-lg bg-purple-500/10 mx-auto mb-2 flex items-center justify-center">
+              <ListTodo className="w-5 h-5 text-purple-500" />
+            </div>
+            <p className="text-2xl font-bold">{weekStats.total}</p>
+            <p className="text-xs text-muted-foreground">{t('tasks.weekPlan')}</p>
           </CardContent>
         </Card>
         <Card className="card-hover border-red-200 bg-red-50/50 dark:bg-red-950/20">
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-red-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{stats.highPriority}</p>
-                <p className="text-xs text-muted-foreground">{t('tasks.highPriority')}</p>
-              </div>
+          <CardContent className="pt-4 text-center">
+            <div className="w-10 h-10 rounded-lg bg-red-500/10 mx-auto mb-2 flex items-center justify-center">
+              <Clock className="w-5 h-5 text-red-500" />
             </div>
+            <p className="text-2xl font-bold">{stats.highPriority}</p>
+            <p className="text-xs text-muted-foreground">{t('tasks.highPriority')}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Progress Bar */}
-      {stats.total > 0 && (
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">{t('tasks.todayProgress')}</span>
-              <span className="text-sm text-muted-foreground">{stats.completed}/{stats.total}</span>
+      {/* Tab Navigation */}
+      <Tabs defaultValue="today" value={activeTab} onValueChange={(v) => setActiveTab(v as ViewTab)}>
+        <div className="flex items-center justify-between">
+          <TabsList className="grid w-full max-w-[400px] grid-cols-3">
+            <TabsTrigger value="today" className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              {t('tasks.todayPlan')}
+            </TabsTrigger>
+            <TabsTrigger value="week" className="flex items-center gap-2">
+              <ListTodo className="w-4 h-4" />
+              {t('tasks.weekPlan')}
+            </TabsTrigger>
+            <TabsTrigger value="all" className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              {t('tasks.allTasks')}
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* Filter and Sort - Only show for all tasks */}
+          {activeTab === 'all' && (
+            <div className="flex items-center gap-2">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-28">
+                  <SelectValue placeholder={t('common.status')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('tasks.allStatus')}</SelectItem>
+                  <SelectItem value="pending">{t('tasks.pending')}</SelectItem>
+                  <SelectItem value="in_progress">{t('tasks.inProgress')}</SelectItem>
+                  <SelectItem value="completed">{t('tasks.completed')}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={filterCategory} onValueChange={setFilterCategory}>
+                <SelectTrigger className="w-28">
+                  <SelectValue placeholder={t('common.category')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('tasks.allCategory')}</SelectItem>
+                  {categoryKeys.map((key) => (
+                    <SelectItem key={key} value={key}>{t(`category.${key}`)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={sortBy} onValueChange={(v: 'priority' | 'deadline') => setSortBy(v)}>
+                <SelectTrigger className="w-28">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="priority">{t('tasks.byPriority')}</SelectItem>
+                  <SelectItem value="deadline">{t('tasks.byDeadline')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Progress value={(stats.completed / stats.total) * 100} className="h-2" />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Filter and Sort */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-muted-foreground" />
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder={t('common.status')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('tasks.allStatus')}</SelectItem>
-              <SelectItem value="pending">{t('tasks.pending')}</SelectItem>
-              <SelectItem value="in_progress">{t('tasks.inProgress')}</SelectItem>
-              <SelectItem value="completed">{t('tasks.completed')}</SelectItem>
-            </SelectContent>
-          </Select>
+          )}
         </div>
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-32">
-            <SelectValue placeholder={t('common.category')} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t('tasks.allCategory')}</SelectItem>
-            {categoryKeys.map((key) => (
-              <SelectItem key={key} value={key}>{t(`category.${key}`)}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <div className="flex items-center gap-2 ml-auto">
-          <SortAsc className="w-4 h-4 text-muted-foreground" />
-          <Select value={sortBy} onValueChange={(v: 'priority' | 'deadline') => setSortBy(v)}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="priority">{t('tasks.byPriority')}</SelectItem>
-              <SelectItem value="deadline">{t('tasks.byDeadline')}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
 
-      {/* Task List */}
-      <div className="space-y-3">
-        {filteredTasks.length === 0 ? (
-          <Card className="py-12">
-            <CardContent className="text-center">
-              <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-                <Sparkles className="w-8 h-8 text-muted-foreground" />
+        {/* Today Plan Tab */}
+        <TabsContent value="today" className="space-y-4 mt-4">
+          {/* Today Progress Card */}
+          <Card className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border-emerald-200 dark:border-emerald-800">
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                    <Target className="w-6 h-6 text-emerald-500" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">{t('tasks.todayPlan')}</h3>
+                    <p className="text-sm text-muted-foreground">{format(new Date(), 'yyyy-MM-dd')} {t('tasks.today')}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-emerald-500">{todayStats.progress}%</p>
+                  <p className="text-sm text-muted-foreground">{todayStats.completed}/{todayStats.total} {t('tasks.completed')}</p>
+                </div>
               </div>
-              <p className="text-lg font-medium">{t('tasks.noTasks')}</p>
-              <p className="text-sm text-muted-foreground mt-1">{t('tasks.addFirst')}</p>
+              <Progress value={todayStats.progress} className="h-3" />
             </CardContent>
           </Card>
-        ) : (
-          filteredTasks.map((task) => {
-            const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
-            const deadlineInfo = getDeadlineInfo(task.deadline);
-            const hasSubtasks = (task.subtask_total || 0) > 0;
-            const subtaskProgress = task.subtask_progress || 0;
 
-            return (
-              <Card
-                key={task.id}
-                className={`card-hover transition-all ${task.status === 'completed' ? 'opacity-60' : ''}`}
-              >
-                <CardContent className="flex items-center gap-4 py-4">
-                  {/* Status Toggle */}
-                  <Checkbox
-                    checked={task.status === 'completed'}
-                    onCheckedChange={(checked) => handleStatusChange(task.id, checked ? 'completed' : 'pending')}
-                    className="w-5 h-5"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-
-                  {/* Task Info - Clickable */}
-                  <div 
-                    className="flex-1 min-w-0 cursor-pointer" 
-                    onClick={() => openTaskDetail(task)}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
-                        {task.title}
-                      </span>
-                      <Badge variant="outline" className={`${priorityConfig?.textColor} border-current`}>
-                        {t(priorityConfig?.labelKey || 'priority.medium')}
-                      </Badge>
-                      <Badge variant="secondary">{t(`category.${task.category}`)}</Badge>
-                      {hasSubtasks && (
-                        <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
-                          <ListTodo className="w-3 h-3 mr-1" />
-                          {task.subtask_completed || 0}/{task.subtask_total || 0}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      {deadlineInfo && (
-                        <span className={`flex items-center gap-1 ${deadlineInfo.color}`}>
-                          <Calendar className="w-3 h-3" />
-                          {deadlineInfo.text}
-                        </span>
-                      )}
-                      {task.estimated_time && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {t('tasks.minutes', { minutes: task.estimated_time })}
-                        </span>
-                      )}
-                      {/* Subtask Progress Bar */}
-                      {hasSubtasks && (
-                        <div className="flex items-center gap-2 flex-1 max-w-[200px]">
-                          <Progress value={subtaskProgress} className="h-1.5 flex-1" />
-                          <span className="text-xs">{subtaskProgress}%</span>
+          {/* Today's Tasks */}
+          <Card>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ListTodo className="w-4 h-4" />
+                  {t('tasks.todayTasks')} ({todayTasks.length})
+                </CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {todayTasks.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>{t('tasks.noTodayTasks')}</p>
+                  <p className="text-sm">{t('tasks.addTodayTask')}</p>
+                </div>
+              ) : (
+                todayTasks.map((task) => {
+                  const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
+                  const hasSubtasks = (task.subtask_total || 0) > 0;
+                  
+                  return (
+                    <div 
+                      key={task.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border transition-all hover:shadow-sm ${task.status === 'completed' ? 'opacity-60 bg-muted/30' : 'bg-card'}`}
+                    >
+                      <Checkbox
+                        checked={task.status === 'completed'}
+                        onCheckedChange={(checked) => handleStatusChange(task.id, checked ? 'completed' : 'pending')}
+                        className="w-5 h-5"
+                      />
+                      <div 
+                        className="flex-1 min-w-0 cursor-pointer" 
+                        onClick={() => openTaskDetail(task)}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
+                            {task.title}
+                          </span>
+                          <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs`}>
+                            {t(priorityConfig?.labelKey || 'priority.medium')}
+                          </Badge>
+                          {hasSubtasks && (
+                            <Badge variant="secondary" className="text-xs">
+                              {task.subtask_completed || 0}/{task.subtask_total || 0}
+                            </Badge>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-2">
-                    {task.status !== 'completed' && task.status !== 'in_progress' && (
+                        {hasSubtasks && (
+                          <Progress value={task.subtask_progress || 0} className="h-1.5" />
+                        )}
+                      </div>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleStatusChange(task.id, 'in_progress');
+                          handleRemoveFromPlan(task.id);
                         }}
-                        title={t('common.startTask')}
+                        title={t('tasks.removeFromPlan')}
                       >
-                        <PlayCircle className="w-4 h-4 text-cyan-500" />
+                        <PinOff className="w-4 h-4 text-muted-foreground" />
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingTask(task);
-                        setShowEditDialog(true);
-                      }}
-                      title={t('common.edit')}
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Unplanned Tasks Quick Add */}
+          {unPlannedTasks.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  {t('tasks.addToToday')} ({unPlannedTasks.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {unPlannedTasks.slice(0, 5).map((task) => {
+                  const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
+                  return (
+                    <div 
+                      key={task.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                     >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteTask(task.id);
-                      }}
-                      title={t('common.delete')}
-                      className="hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                      <Circle className="w-4 h-4 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium truncate">{task.title}</span>
+                        <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs ml-2`}>
+                          {t(priorityConfig?.labelKey || 'priority.medium')}
+                        </Badge>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleQuickAddToPlan(task.id, 'today')}
+                        className="flex items-center gap-1"
+                      >
+                        <Pin className="w-3 h-3" />
+                        {t('tasks.addToToday')}
+                      </Button>
+                    </div>
+                  );
+                })}
+                {unPlannedTasks.length > 5 && (
+                  <p className="text-center text-sm text-muted-foreground py-2">
+                    +{unPlannedTasks.length - 5} {t('tasks.moreTasks')}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Week Plan Tab */}
+        <TabsContent value="week" className="space-y-4 mt-4">
+          {/* Week Overview Card */}
+          <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-200 dark:border-purple-800">
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
+                    <ListTodo className="w-6 h-6 text-purple-500" />
                   </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">{t('tasks.weekPlan')}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(), 'MM/dd')} - {format(addDays(new Date(), 7), 'MM/dd')}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-purple-500">{weekStats.progress}%</p>
+                  <p className="text-sm text-muted-foreground">{weekStats.completed}/{weekStats.total} {t('tasks.completed')}</p>
+                </div>
+              </div>
+              <Progress value={weekStats.progress} className="h-3" />
+            </CardContent>
+          </Card>
+
+          {/* Week Day Cards */}
+          <div className="grid grid-cols-7 gap-2">
+            {[0, 1, 2, 3, 4, 5, 6].map((dayOffset) => {
+              const date = addDays(new Date(), dayOffset);
+              const dateStr = format(date, 'yyyy-MM-dd');
+              const dayTasks = weekTasks.filter(t => t.plan_date === dateStr);
+              const completedCount = dayTasks.filter(t => t.status === 'completed').length;
+              const isTodayDate = dayOffset === 0;
+              
+              return (
+                <Card 
+                  key={dayOffset}
+                  className={`text-center ${isTodayDate ? 'ring-2 ring-primary' : ''}`}
+                >
+                  <CardContent className="pt-3 pb-2">
+                    <p className="text-xs text-muted-foreground">{format(date, 'EEE')}</p>
+                    <p className={`text-lg font-bold ${isTodayDate ? 'text-primary' : ''}`}>{format(date, 'd')}</p>
+                    <div className="mt-1">
+                      {dayTasks.length > 0 ? (
+                        <div className={`text-xs font-medium ${completedCount === dayTasks.length ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+                          {completedCount}/{dayTasks.length}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground">-</div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Week Tasks List */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                {t('tasks.weekTasks')} ({weekTasks.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {weekTasks.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>{t('tasks.noWeekTasks')}</p>
+                  <p className="text-sm">{t('tasks.addWeekTask')}</p>
+                </div>
+              ) : (
+                weekTasks
+                  .sort((a, b) => {
+                    if (!a.plan_date) return 1;
+                    if (!b.plan_date) return -1;
+                    return a.plan_date.localeCompare(b.plan_date);
+                  })
+                  .map((task) => {
+                    const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
+                    const deadlineInfo = getDeadlineInfo(task);
+                    const isTodayTask = task.plan_date === todayStr;
+                    
+                    return (
+                      <div 
+                        key={task.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all hover:shadow-sm ${task.status === 'completed' ? 'opacity-60 bg-muted/30' : 'bg-card'}`}
+                      >
+                        <Checkbox
+                          checked={task.status === 'completed'}
+                          onCheckedChange={(checked) => handleStatusChange(task.id, checked ? 'completed' : 'pending')}
+                          className="w-5 h-5"
+                        />
+                        <div 
+                          className="flex-1 min-w-0 cursor-pointer" 
+                          onClick={() => openTaskDetail(task)}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            {isTodayTask && (
+                              <Badge className="bg-primary text-xs">{t('tasks.today')}</Badge>
+                            )}
+                            <span className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
+                              {task.title}
+                            </span>
+                            <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs`}>
+                              {t(priorityConfig?.labelKey || 'priority.medium')}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Calendar className="w-3 h-3" />
+                            <span>{format(new Date(task.plan_date!), 'MM/dd')}</span>
+                            {deadlineInfo && task.deadline && (
+                              <>
+                                <span>|</span>
+                                <span className={deadlineInfo.color}>{t('tasks.deadline')}: {deadlineInfo.label}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveFromPlan(task.id);
+                          }}
+                          title={t('tasks.removeFromPlan')}
+                        >
+                          <PinOff className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    );
+                  })
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* All Tasks Tab */}
+        <TabsContent value="all" className="space-y-4 mt-4">
+          {/* All Tasks List */}
+          <div className="space-y-3">
+            {filteredTasks.length === 0 ? (
+              <Card className="py-12">
+                <CardContent className="text-center">
+                  <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                    <Sparkles className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-lg font-medium">{t('tasks.noTasks')}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{t('tasks.addFirst')}</p>
                 </CardContent>
               </Card>
-            );
-          })
-        )}
-      </div>
+            ) : (
+              filteredTasks.map((task) => {
+                const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
+                const deadlineInfo = getDeadlineInfo(task);
+                const hasSubtasks = (task.subtask_total || 0) > 0;
+                const subtaskProgress = task.subtask_progress || 0;
+                const isTodayPlanned = task.plan_date === todayStr;
 
-      {/* Clear Completed Button */}
-      {stats.completed > 0 && (
-        <div className="flex justify-center">
-          <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="text-muted-foreground">
-                <Trash2 className="w-4 h-4 mr-2" />
-                {t('tasks.clearCompleted')}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>{t('tasks.confirmClear')}</AlertDialogTitle>
-                <AlertDialogDescription>
-                  {t('tasks.confirmClearDesc')}
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                <AlertDialogAction onClick={handleClearCompleted} className="bg-destructive">
-                  {t('common.delete')}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </div>
-      )}
+                return (
+                  <Card
+                    key={task.id}
+                    className={`card-hover transition-all ${task.status === 'completed' ? 'opacity-60' : ''}`}
+                  >
+                    <CardContent className="flex items-center gap-4 py-4">
+                      {/* Status Toggle */}
+                      <Checkbox
+                        checked={task.status === 'completed'}
+                        onCheckedChange={(checked) => handleStatusChange(task.id, checked ? 'completed' : 'pending')}
+                        className="w-5 h-5"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+
+                      {/* Task Info - Clickable */}
+                      <div 
+                        className="flex-1 min-w-0 cursor-pointer" 
+                        onClick={() => openTaskDetail(task)}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          {isTodayPlanned && (
+                            <Badge className="bg-primary text-xs">{t('tasks.today')}</Badge>
+                          )}
+                          <span className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
+                            {task.title}
+                          </span>
+                          <Badge variant="outline" className={`${priorityConfig?.textColor} border-current`}>
+                            {t(priorityConfig?.labelKey || 'priority.medium')}
+                          </Badge>
+                          <Badge variant="secondary">{t(`category.${task.category}`)}</Badge>
+                          {hasSubtasks && (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
+                              <ListTodo className="w-3 h-3 mr-1" />
+                              {task.subtask_completed || 0}/{task.subtask_total || 0}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          {deadlineInfo && (
+                            <span className={`flex items-center gap-1 ${deadlineInfo.color}`}>
+                              <Calendar className="w-3 h-3" />
+                              {deadlineInfo.label}
+                            </span>
+                          )}
+                          {task.estimated_time && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {t('tasks.minutes', { minutes: task.estimated_time })}
+                            </span>
+                          )}
+                          {/* Subtask Progress Bar */}
+                          {hasSubtasks && (
+                            <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+                              <Progress value={subtaskProgress} className="h-1.5 flex-1" />
+                              <span className="text-xs">{subtaskProgress}%</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2">
+                        {!task.plan_date && task.status !== 'completed' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQuickAddToPlan(task.id, 'today');
+                            }}
+                            title={t('tasks.addToToday')}
+                          >
+                            <Pin className="w-4 h-4 text-primary" />
+                          </Button>
+                        )}
+                        {task.status !== 'completed' && task.status !== 'in_progress' && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStatusChange(task.id, 'in_progress');
+                            }}
+                            title={t('common.startTask')}
+                          >
+                            <PlayCircle className="w-4 h-4 text-cyan-500" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingTask(task);
+                            setShowEditDialog(true);
+                          }}
+                          title={t('common.edit')}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTask(task.id);
+                          }}
+                          title={t('common.delete')}
+                          className="hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+
+          {/* Clear Completed Button */}
+          {stats.completed > 0 && (
+            <div className="flex justify-center">
+              <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="text-muted-foreground">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {t('tasks.clearCompleted')}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>{t('tasks.confirmClear')}</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {t('tasks.confirmClearDesc')}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleClearCompleted} className="bg-destructive">
+                      {t('common.delete')}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Task Detail Dialog */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
@@ -704,12 +1157,20 @@ export default function TasksPage() {
           <DialogHeader>
             <DialogTitle className="text-xl">{detailTask?.title}</DialogTitle>
             <DialogDescription>
-              {detailTask?.deadline && (
-                <span className="flex items-center gap-1 text-sm">
-                  <Calendar className="w-4 h-4" />
-                  {t('tasks.deadline')}: {format(new Date(detailTask.deadline), 'yyyy-MM-dd')}
-                </span>
-              )}
+              <div className="flex items-center gap-4 mt-2">
+                {detailTask?.plan_date && (
+                  <span className="flex items-center gap-1 text-sm">
+                    <Calendar className="w-4 h-4" />
+                    {t('tasks.planDate')}: {format(new Date(detailTask.plan_date), 'yyyy-MM-dd')}
+                  </span>
+                )}
+                {detailTask?.deadline && (
+                  <span className="flex items-center gap-1 text-sm">
+                    <Clock className="w-4 h-4" />
+                    {t('tasks.deadline')}: {format(new Date(detailTask.deadline), 'yyyy-MM-dd')}
+                  </span>
+                )}
+              </div>
             </DialogDescription>
           </DialogHeader>
           
@@ -850,6 +1311,14 @@ export default function TasksPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
+                  <Label>{t('tasks.planDate')}</Label>
+                  <Input
+                    type="date"
+                    value={editingTask.plan_date || ''}
+                    onChange={(e) => setEditingTask({ ...editingTask, plan_date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label>{t('tasks.deadline')}</Label>
                   <Input
                     type="date"
@@ -857,15 +1326,15 @@ export default function TasksPage() {
                     onChange={(e) => setEditingTask({ ...editingTask, deadline: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>{t('tasks.estimatedTime')}</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={editingTask.estimated_time || ''}
-                    onChange={(e) => setEditingTask({ ...editingTask, estimated_time: e.target.value ? parseInt(e.target.value) : null })}
-                  />
-                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>{t('tasks.estimatedTime')}</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={editingTask.estimated_time || ''}
+                  onChange={(e) => setEditingTask({ ...editingTask, estimated_time: e.target.value ? parseInt(e.target.value) : null })}
+                />
               </div>
             </div>
           )}
@@ -878,3 +1347,6 @@ export default function TasksPage() {
     </div>
   );
 }
+
+// Import useAuth
+import { useAuth } from '@/hooks/useAuth';

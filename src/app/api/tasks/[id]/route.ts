@@ -110,6 +110,10 @@ export async function PUT(
       updates.push('deadline = ?');
       values.push(body.deadline);
     }
+    if (body.plan_date !== undefined) {
+      updates.push('plan_date = ?');
+      values.push(body.plan_date);
+    }
     if (body.estimated_time !== undefined) {
       updates.push('estimated_time = ?');
       values.push(body.estimated_time);

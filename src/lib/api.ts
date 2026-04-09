@@ -49,8 +49,16 @@ export const authApi = {
 
 // 任务 API
 export const tasksApi = {
-  getAll: (includeDeleted = false) =>
-    fetchApi<any[]>(`/tasks?includeDeleted=${includeDeleted}`),
+  getAll: (includeDeleted = false, options?: { planDate?: string; planDateRange?: 'today' | 'week' | 'all' }) => {
+    let url = `/tasks?includeDeleted=${includeDeleted}`;
+    if (options?.planDate) {
+      url += `&planDate=${options.planDate}`;
+    }
+    if (options?.planDateRange) {
+      url += `&planDateRange=${options.planDateRange}`;
+    }
+    return fetchApi<any[]>(url);
+  },
 
   getById: (id: string) =>
     fetchApi<any>(`/tasks/${id}`),
@@ -60,6 +68,7 @@ export const tasksApi = {
     category?: string;
     priority?: string;
     deadline?: string;
+    plan_date?: string;
     estimated_time?: number;
   }) =>
     fetchApi<any>('/tasks', {

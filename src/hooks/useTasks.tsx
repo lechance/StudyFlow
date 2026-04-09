@@ -9,7 +9,7 @@ interface TasksContextType {
   tasks: Task[];
   loading: boolean;
   error: string | null;
-  fetchTasks: () => Promise<void>;
+  fetchTasks: (options?: { planDate?: string; planDateRange?: 'today' | 'week' | 'all' }) => Promise<void>;
   addTask: (task: Omit<Task, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'is_deleted'>) => Promise<boolean>;
   updateTask: (id: string, updates: Partial<Task>) => Promise<boolean>;
   deleteTask: (id: string) => Promise<boolean>;
@@ -29,7 +29,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (options?: { planDate?: string; planDateRange?: 'today' | 'week' | 'all' }) => {
     if (!user) {
       setTasks([]);
       return;
@@ -38,7 +38,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setError(null);
     
-    const res = await tasksApi.getAll(false);
+    const res = await tasksApi.getAll(false, options);
     if (res.success) {
       setTasks(res.data || []);
     } else {

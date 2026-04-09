@@ -6,34 +6,40 @@ import { useLanguage } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Calendar } from '@/components/ui/calendar';
+import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { plansApi } from '@/lib/api';
+import { plansApi, studyApi, tasksApi } from '@/lib/api';
 import { toast } from 'sonner';
-import { format, addDays, subDays, isToday, isSameDay } from 'date-fns';
-import { Calendar as CalendarIcon, CheckCircle, Flame, ChevronLeft, ChevronRight } from 'lucide-react';
+import { format, addDays, subDays, isToday, isSameDay, startOfWeek, endOfWeek } from 'date-fns';
+import { 
+  Calendar, 
+  CheckCircle, 
+  Flame, 
+  ChevronLeft, 
+  ChevronRight,
+  Target,
+  ListTodo,
+  TrendingUp,
+  Clock,
+  Sparkles
+} from 'lucide-react';
 
 export default function PlansPage() {
   const { user, refreshUser } = useAuth();
   const { t, language } = useLanguage();
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [weekDates, setWeekDates] = useState<Date[]>([]);
-  const [planContent, setPlanContent] = useState('');
-  const [dailyPlan, setDailyPlan] = useState<any>(null);
   const [checkIns, setCheckIns] = useState<any[]>([]);
+  const [todayTasks, setTodayTasks] = useState<any[]>([]);
+  const [weekStats, setWeekStats] = useState<any>(null);
+  const [weekDates, setWeekDates] = useState<Date[]>([]);
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
 
-  // Generate week dates
+  // Generate week dates centered around today
   const generateWeekDates = useCallback((centerDate: Date) => {
     const dates: Date[] = [];
     for (let i = -3; i <= 3; i++) {
@@ -42,64 +48,77 @@ export default function PlansPage() {
     return dates;
   }, []);
 
-  // Load week view data
-  const loadWeekData = useCallback(async (dates: Date[]) => {
-    if (!dates.length) return;
-    
-    const res = await plansApi.getCheckIns(7);
+  // Load check-in data
+  const loadCheckIns = useCallback(async () => {
+    const res = await plansApi.getCheckIns(14);
     if (res.success) {
       setCheckIns(res.data?.checkIns || []);
     }
   }, []);
 
-  // Load daily plan
-  const loadDailyPlan = useCallback(async (date: Date) => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    const res = await plansApi.getPlans({ date: dateStr });
-    if (res.success && res.data && res.data.length > 0) {
-      setDailyPlan(res.data[0]);
-      setPlanContent(res.data[0].content || '');
-    } else {
-      setDailyPlan(null);
-      setPlanContent('');
+  // Load today's tasks from Tasks system
+  const loadTodayTasks = useCallback(async () => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const res = await tasksApi.getAll(false, { planDate: todayStr });
+    if (res.success) {
+      setTodayTasks(res.data || []);
     }
   }, []);
 
-  useEffect(() => {
-    setWeekDates(generateWeekDates(selectedDate));
-  }, [selectedDate, generateWeekDates]);
-
-  useEffect(() => {
-    loadWeekData(weekDates);
-    loadDailyPlan(selectedDate);
-  }, [weekDates, selectedDate, loadWeekData, loadDailyPlan]);
-
-  // Save plan
-  const savePlan = async () => {
-    if (!planContent.trim()) {
-      toast.error(t('plans.pleaseEnterPlan'));
-      return;
-    }
-
-    setSaving(true);
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const res = await plansApi.savePlan(dateStr, planContent);
+  // Load week stats from study records
+  const loadWeekStats = useCallback(async () => {
+    const today = new Date();
+    const weekStart = startOfWeek(today);
+    const weekEnd = endOfWeek(today);
     
-    if (res.success) {
-      setDailyPlan(res.data);
-      toast.success(t('plans.planSaved'));
-    } else {
-      toast.error(t('common.error'));
+    try {
+      const res = await studyApi.getRecords({
+        startDate: format(weekStart, 'yyyy-MM-dd'),
+        endDate: format(weekEnd, 'yyyy-MM-dd')
+      });
+      
+      if (res.success && res.data) {
+        // Calculate stats from study records
+        const totalMinutes = res.data.reduce((sum: number, r: any) => sum + (r.duration || 0), 0);
+        setWeekStats({
+          studyHours: Math.round(totalMinutes / 60 * 10) / 10,
+          completedTasks: todayTasks.filter(t => t.status === 'completed').length
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load week stats:', error);
+      setWeekStats({ studyHours: 0, completedTasks: 0 });
     }
-    setSaving(false);
-  };
+  }, [todayTasks]);
+
+  useEffect(() => {
+    setWeekDates(generateWeekDates(new Date()));
+  }, [generateWeekDates]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([
+        loadCheckIns(),
+        loadTodayTasks()
+      ]);
+      setLoading(false);
+    };
+    loadData();
+  }, [loadCheckIns, loadTodayTasks]);
+
+  useEffect(() => {
+    if (todayTasks.length > 0) {
+      loadWeekStats();
+    }
+  }, [todayTasks, loadWeekStats]);
 
   // Check in
   const handleCheckIn = async () => {
     const res = await plansApi.checkIn();
     if (res.success) {
       await refreshUser();
-      await loadWeekData(weekDates);
+      await loadCheckIns();
       if (res.data?.newStreak) {
         toast.success(t('plans.checkInStreak', { days: res.data.newStreak }));
       } else {
@@ -112,15 +131,17 @@ export default function PlansPage() {
 
   // Week navigation
   const goToPrevWeek = () => {
-    setSelectedDate(subDays(selectedDate, 7));
+    const newCenter = subDays(weekDates[0], 1);
+    setWeekDates(generateWeekDates(newCenter));
   };
 
   const goToNextWeek = () => {
-    setSelectedDate(addDays(selectedDate, 7));
+    const newCenter = addDays(weekDates[6], 1);
+    setWeekDates(generateWeekDates(newCenter));
   };
 
   const goToToday = () => {
-    setSelectedDate(new Date());
+    setWeekDates(generateWeekDates(new Date()));
   };
 
   // Check if date is checked in
@@ -129,63 +150,140 @@ export default function PlansPage() {
     return checkIns.some(c => c.date === dateStr);
   };
 
-  // Plan templates
-  const planTemplates = [
-    t('plans.templates.study'),
-    t('plans.templates.preview'),
-    t('plans.templates.morning'),
-  ];
-
-  const applyTemplate = (template: string) => {
-    setPlanContent(template);
-  };
+  // Calculate stats
+  const todayCompleted = todayTasks.filter(t => t.status === 'completed').length;
+  const todayProgress = todayTasks.length > 0 ? Math.round((todayCompleted / todayTasks.length) * 100) : 0;
+  
+  const todayCheckIn = isToday(weekDates[3]) ? isDateCheckedIn(weekDates[3]) : false;
+  
+  // Week check-in count
+  const weekCheckInCount = weekDates.filter(d => isDateCheckedIn(d) && d <= new Date()).length;
 
   return (
     <div className="space-y-6 animate-in">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">{t('plans.title')}</h1>
-          <p className="text-muted-foreground mt-1">{t('plans.subtitle')}</p>
+          <h1 className="text-3xl font-bold">{t('checkin.title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('checkin.subtitle')}</p>
         </div>
-        <Button onClick={handleCheckIn} className="gradient-bg">
-          <CheckCircle className="w-4 h-4 mr-2" />
-          {t('plans.checkIn')}
+        <Button 
+          onClick={handleCheckIn} 
+          className={todayCheckIn ? 'bg-emerald-500 hover:bg-emerald-600' : 'gradient-bg'}
+          disabled={todayCheckIn}
+        >
+          {todayCheckIn ? (
+            <>
+              <CheckCircle className="w-4 h-4 mr-2" />
+              {t('checkin.alreadyCheckedIn')}
+            </>
+          ) : (
+            <>
+              <Flame className="w-4 h-4 mr-2" />
+              {t('checkin.checkInNow')}
+            </>
+          )}
         </Button>
       </div>
 
-      {/* Streak Stats */}
-      <Card className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white">
+      {/* Streak Stats Card */}
+      <Card className="bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-white">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center">
-                <Flame className="w-8 h-8" />
+              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+                <Flame className="w-10 h-10" />
               </div>
               <div>
-                <p className="text-4xl font-bold">{user?.streak_days || 0}</p>
-                <p className="text-white/80">{t('plans.streakTitle')}</p>
+                <p className="text-5xl font-bold">{user?.streak_days || 0}</p>
+                <p className="text-white/80 text-lg">{t('checkin.streakDays')}</p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-lg font-medium">{t('plans.keepFocus')}</p>
-              <p className="text-white/80">{t('plans.smallProgress')}</p>
+            <div className="text-right hidden sm:block">
+              <p className="text-lg font-medium">{t('checkin.keepGoing')}</p>
+              <p className="text-white/80">{t('checkin.smallProgress')}</p>
+              <p className="text-sm text-white/60 mt-2">
+                {user?.streak_days && user.streak_days >= 7 
+                  ? t('checkin.greatStreak') 
+                  : user?.streak_days && user.streak_days >= 21 
+                    ? t('checkin.amazingStreak') 
+                    : t('checkin.startStreak')}
+              </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Week View */}
+      {/* Today's Progress */}
+      <Card className="border-emerald-200 dark:border-emerald-800">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Target className="w-5 h-5 text-emerald-500" />
+              {t('checkin.todayProgress')}
+            </CardTitle>
+            <Badge variant="outline" className="text-emerald-500 border-emerald-200">
+              {todayCompleted}/{todayTasks.length} {t('checkin.tasksCompleted')}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <Progress value={todayProgress} className="h-4 flex-1" />
+            <span className="text-2xl font-bold text-emerald-500 w-16 text-right">
+              {todayProgress}%
+            </span>
+          </div>
+          <div className="mt-4 space-y-2">
+            {todayTasks.slice(0, 5).map((task) => (
+              <div 
+                key={task.id}
+                className={`flex items-center gap-3 p-2 rounded-lg ${
+                  task.status === 'completed' 
+                    ? 'bg-emerald-50 dark:bg-emerald-950/30' 
+                    : 'bg-muted/50'
+                }`}
+              >
+                {task.status === 'completed' ? (
+                  <CheckCircle className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border-2 border-muted-foreground flex-shrink-0" />
+                )}
+                <span className={`flex-1 truncate ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
+                  {task.title}
+                </span>
+              </div>
+            ))}
+            {todayTasks.length > 5 && (
+              <p className="text-sm text-muted-foreground text-center">
+                +{todayTasks.length - 5} {t('checkin.moreTasks')}
+              </p>
+            )}
+            {todayTasks.length === 0 && (
+              <div className="text-center py-4 text-muted-foreground">
+                <ListTodo className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                <p>{t('checkin.noTasksToday')}</p>
+                <p className="text-sm">{t('checkin.addTasksFromTasksPage')}</p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Week Overview */}
       <Card>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg">{t('plans.weekOverview')}</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Calendar className="w-5 h-5" />
+              {t('checkin.weekOverview')}
+            </CardTitle>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={goToPrevWeek}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <Button variant="outline" size="sm" onClick={goToToday}>
-                {t('plans.today')}
+                {t('checkin.today')}
               </Button>
               <Button variant="outline" size="icon" onClick={goToNextWeek}>
                 <ChevronRight className="w-4 h-4" />
@@ -197,137 +295,79 @@ export default function PlansPage() {
           <div className="grid grid-cols-7 gap-2">
             {weekDates.map((date, index) => {
               const checked = isDateCheckedIn(date);
-              const isSelected = isSameDay(date, selectedDate);
-              const today = isToday(date);
+              const isTodayDate = isToday(date);
+              const isFuture = date > new Date();
               
               return (
-                <button
+                <div
                   key={index}
-                  onClick={() => setSelectedDate(date)}
                   className={`
-                    flex flex-col items-center p-2 rounded-lg transition-all
-                    ${isSelected ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'}
-                    ${today && !isSelected ? 'ring-2 ring-primary ring-offset-2' : ''}
+                    flex flex-col items-center p-3 rounded-lg transition-all
+                    ${isTodayDate ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2' : ''}
+                    ${checked && !isTodayDate ? 'bg-emerald-100 dark:bg-emerald-900/50' : ''}
+                    ${!checked && !isTodayDate && !isFuture ? 'bg-muted/50' : ''}
+                    ${isFuture ? 'opacity-50' : ''}
                   `}
                 >
-                  <span className="text-xs opacity-70">
+                  <span className={`text-xs ${isTodayDate ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                     {format(date, 'EEE')}
                   </span>
-                  <span className={`text-lg font-bold ${checked && !isSelected ? 'text-emerald-500' : ''}`}>
+                  <span className={`text-lg font-bold ${checked && !isTodayDate ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>
                     {format(date, 'd')}
                   </span>
                   {checked && (
-                    <div className={`w-4 h-4 rounded-full mt-1 ${isSelected ? 'bg-white' : 'bg-emerald-500'}`}>
-                      <CheckCircle className={`w-4 h-4 ${isSelected ? 'text-primary' : 'text-white'}`} />
-                    </div>
+                    <CheckCircle className={`w-5 h-5 mt-1 ${isTodayDate ? 'text-primary-foreground' : 'text-emerald-500'}`} />
                   )}
-                </button>
+                  {!checked && !isFuture && (
+                    <div className={`w-5 h-5 rounded-full border-2 mt-1 ${isTodayDate ? 'border-primary-foreground/50' : 'border-muted-foreground/30'}`} />
+                  )}
+                </div>
               );
             })}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Daily Plan */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5" />
-              {format(selectedDate, language === 'zh-CN' ? 'yyyy年MM月dd日' : 'MMMM d, yyyy')}
-              {isToday(selectedDate) && <Badge>{t('plans.today')}</Badge>}
-            </CardTitle>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  {t('plans.templates')}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{t('plans.templates')}</DialogTitle>
-                  <DialogDescription>
-                    {t('common.planningTip')}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-2 py-4">
-                  {planTemplates.map((template, index) => (
-                    <Button
-                      key={index}
-                      variant="outline"
-                      className="w-full justify-start text-left h-auto py-3 whitespace-pre-wrap"
-                      onClick={() => {
-                        applyTemplate(template);
-                      }}
-                    >
-                      {template}
-                    </Button>
-                  ))}
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>{t('plans.dailyPlan')}</Label>
-              <Textarea
-                placeholder={t('plans.enterPlan')}
-                className="min-h-[200px] resize-none"
-                value={planContent}
-                onChange={(e) => setPlanContent(e.target.value)}
-              />
+          
+          {/* Week Stats */}
+          <div className="grid grid-cols-3 gap-4 mt-6">
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center justify-center gap-2 text-amber-500">
+                <Flame className="w-4 h-4" />
+                <span className="text-2xl font-bold">{weekCheckInCount}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">{t('checkin.weekCheckins')}</p>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setPlanContent('')}>
-                {t('plans.clear')}
-              </Button>
-              <Button className="gradient-bg" onClick={savePlan} disabled={saving}>
-                {saving ? t('plans.saving') : t('plans.savePlan')}
-              </Button>
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center justify-center gap-2 text-blue-500">
+                <TrendingUp className="w-4 h-4" />
+                <span className="text-2xl font-bold">{weekStats?.completedTasks || 0}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">{t('checkin.weekTasks')}</p>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <div className="flex items-center justify-center gap-2 text-purple-500">
+                <Clock className="w-4 h-4" />
+                <span className="text-2xl font-bold">{weekStats?.studyHours || 0}h</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">{t('checkin.weekHours')}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Check-in Calendar */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{t('plans.calendar')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Calendar
-            mode="single"
-            selected={selectedDate}
-            onSelect={(date) => date && setSelectedDate(date)}
-            className="mx-auto"
-            locale={language === 'zh-CN' ? undefined : undefined}
-            modifiers={{
-              checked: checkIns.map(c => new Date(c.date))
-            }}
-            modifiersClassNames={{
-              checked: 'bg-emerald-500 text-white hover:bg-emerald-500'
-            }}
-          />
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            <p>{t('plans.checkedDays')}</p>
-            <p>{t('plans.maintainStreak')}</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Study Tip */}
-      <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20">
+      {/* Motivation Card */}
+      <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border-blue-200 dark:border-blue-800">
         <CardContent className="pt-6">
           <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
-              <Flame className="w-5 h-5 text-blue-500" />
+            <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-6 h-6 text-blue-500" />
             </div>
             <div>
-              <p className="font-medium text-blue-600 dark:text-blue-400">{t('plans.persistWins')}</p>
+              <h3 className="font-semibold text-blue-600 dark:text-blue-400">{t('checkin.motivationTitle')}</h3>
               <p className="text-sm text-muted-foreground mt-1">
-                {t('plans.persistTip')}
+                {user?.streak_days && user.streak_days >= 21 
+                  ? t('checkin.motivationExpert')
+                  : user?.streak_days && user.streak_days >= 7 
+                    ? t('checkin.motivationGreat')
+                    : t('checkin.motivationStart')}
               </p>
             </div>
           </div>
