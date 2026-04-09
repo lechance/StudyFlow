@@ -451,6 +451,9 @@ export default function TasksPage() {
     const deadlineInfo = getDeadlineInfo(task);
     const isCompleted = task.status === 'completed';
 
+    // Calculate overall task progress
+    const taskProgress = isCompleted ? 100 : hasSubtasks ? subtaskProgress : 0;
+
     return (
       <Card
         key={task.id}
@@ -458,6 +461,13 @@ export default function TasksPage() {
           deadlineInfo?.urgent ? `border ${deadlineInfo.borderColor}` : ''
         }`}
       >
+        {/* Progress bar at top of card */}
+        <div className="h-1 bg-muted rounded-t-lg overflow-hidden">
+          <div 
+            className={`h-full transition-all duration-300 ${isCompleted ? 'bg-emerald-500' : hasSubtasks ? 'bg-blue-500' : 'bg-muted'}`}
+            style={{ width: `${taskProgress}%` }}
+          />
+        </div>
         <CardContent className="p-4">
           {/* Header Row */}
           <div className="flex items-start gap-3 mb-3">
@@ -467,13 +477,27 @@ export default function TasksPage() {
               className="mt-1 w-5 h-5"
             />
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                {isTodayTask && (
-                  <Badge className="bg-primary text-xs">{t('tasks.today')}</Badge>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {isTodayTask && (
+                    <Badge className="bg-primary text-xs">{t('tasks.today')}</Badge>
+                  )}
+                  <span className={`font-semibold text-base ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                    {task.title}
+                  </span>
+                </div>
+                {/* Progress indicator */}
+                {hasSubtasks && (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500 rounded-full transition-all"
+                        style={{ width: `${subtaskProgress}%` }}
+                      />
+                    </div>
+                    <span className="text-muted-foreground whitespace-nowrap">{subtaskProgress}%</span>
+                  </div>
                 )}
-                <span className={`font-semibold text-base ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
-                  {task.title}
-                </span>
               </div>
               
               {/* Meta Info Row */}
@@ -570,46 +594,29 @@ export default function TasksPage() {
             </div>
           )}
 
-          {/* Subtasks Progress */}
-          {hasSubtasks && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <ListTodo className="w-4 h-4 text-blue-500" />
-                  <span>{t('tasks.subtasks')}</span>
-                  <span className="text-muted-foreground">
-                    {task.subtask_completed || 0}/{task.subtask_total || 0}
+          {/* Subtasks Preview */}
+          {hasSubtasks && task.subtasks && task.subtasks.length > 0 && (
+            <div className="pl-4 space-y-1 mt-2">
+              {task.subtasks.slice(0, 3).map((subtask: any) => (
+                <div key={subtask.id} className="flex items-center gap-2 text-sm">
+                  {subtask.completed ? (
+                    <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                  ) : (
+                    <Circle className="w-3 h-3 text-muted-foreground" />
+                  )}
+                  <span className={subtask.completed ? 'line-through text-muted-foreground' : ''}>
+                    {subtask.title}
                   </span>
                 </div>
-                <span className="font-medium text-blue-600">{subtaskProgress}%</span>
-              </div>
-              <Progress value={subtaskProgress} className="h-2" />
-              
-              {/* Subtask Preview */}
-              {task.subtasks && task.subtasks.length > 0 && (
-                <div className="pl-4 space-y-1 mt-2">
-                  {task.subtasks.slice(0, 3).map((subtask: any) => (
-                    <div key={subtask.id} className="flex items-center gap-2 text-sm">
-                      {subtask.completed ? (
-                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                      ) : (
-                        <Circle className="w-3 h-3 text-muted-foreground" />
-                      )}
-                      <span className={subtask.completed ? 'line-through text-muted-foreground' : ''}>
-                        {subtask.title}
-                      </span>
-                    </div>
-                  ))}
-                  {task.subtasks.length > 3 && (
-                    <Button
-                      variant="link"
-                      className="text-xs text-blue-500 p-0 h-auto"
-                      onClick={() => openTaskDetail(task)}
-                    >
-                      +{task.subtasks.length - 3} {t('tasks.moreTasks')}
-                    </Button>
-                  )}
-                </div>
+              ))}
+              {task.subtasks.length > 3 && (
+                <Button
+                  variant="link"
+                  className="text-xs text-blue-500 p-0 h-auto"
+                  onClick={() => openTaskDetail(task)}
+                >
+                  +{task.subtasks.length - 3} {t('tasks.moreTasks')}
+                </Button>
               )}
             </div>
           )}
@@ -832,29 +839,6 @@ export default function TasksPage() {
                   <p className="text-sm text-muted-foreground">{todayStats.completed}/{todayStats.total}</p>
                 </div>
               </div>
-              
-              {/* Progress Bars */}
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>{t('tasks.taskProgress')}</span>
-                    <span className="text-emerald-600">{todayStats.completed}/{todayStats.total}</span>
-                  </div>
-                  <Progress value={todayStats.progress} className="h-3" />
-                </div>
-                {todayStats.subtaskTotal > 0 && (
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="flex items-center gap-1">
-                        <ListTodo className="w-3 h-3" />
-                        {t('tasks.subtaskProgress')}
-                      </span>
-                      <span className="text-blue-600">{todayStats.subtaskCompleted}/{todayStats.subtaskTotal}</span>
-                    </div>
-                    <Progress value={todayStats.subtaskProgress} className="h-2 bg-muted" />
-                  </div>
-                )}
-              </div>
             </CardContent>
           </Card>
 
@@ -955,29 +939,6 @@ export default function TasksPage() {
                   <p className="text-4xl font-bold text-purple-600">{weekStats.progress}%</p>
                   <p className="text-sm text-muted-foreground">{weekStats.completed}/{weekStats.total}</p>
                 </div>
-              </div>
-              
-              {/* Progress Bars */}
-              <div className="space-y-3">
-                <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>{t('tasks.taskProgress')}</span>
-                    <span className="text-purple-600">{weekStats.completed}/{weekStats.total}</span>
-                  </div>
-                  <Progress value={weekStats.progress} className="h-3" />
-                </div>
-                {weekStats.subtaskTotal > 0 && (
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="flex items-center gap-1">
-                        <ListTodo className="w-3 h-3" />
-                        {t('tasks.subtaskProgress')}
-                      </span>
-                      <span className="text-blue-600">{weekStats.subtaskCompleted}/{weekStats.subtaskTotal}</span>
-                    </div>
-                    <Progress value={weekStats.subtaskProgress} className="h-2 bg-muted" />
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
