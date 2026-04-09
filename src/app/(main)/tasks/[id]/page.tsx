@@ -65,6 +65,14 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   const [editingDescription, setEditingDescription] = useState(false);
   const [description, setDescription] = useState('');
   
+  // Subtask editing states
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [editingSubtaskTitle, setEditingSubtaskTitle] = useState('');
+  
+  // Subtask drag states
+  const [draggedSubtask, setDraggedSubtask] = useState<Subtask | null>(null);
+  const [dragOverSubtask, setDragOverSubtask] = useState<string | null>(null);
+  
   // Edit mode states
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -198,6 +206,103 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
     } catch {
       toast.error(t('common.error'));
     }
+  };
+
+  // Start editing subtask
+  const startEditSubtask = (subtask: Subtask) => {
+    setEditingSubtaskId(subtask.id);
+    setEditingSubtaskTitle(subtask.title);
+  };
+
+  // Save subtask edit
+  const saveSubtaskEdit = async (subtaskId: string) => {
+    if (!editingSubtaskTitle.trim()) return;
+    try {
+      const res = await api.put('/api/subtasks', { id: subtaskId, title: editingSubtaskTitle.trim() });
+      if (res.success) {
+        setSubtasks(prev => prev.map(s => 
+          s.id === subtaskId ? { ...s, title: editingSubtaskTitle.trim() } : s
+        ));
+        setEditingSubtaskId(null);
+        setEditingSubtaskTitle('');
+        toast.success(t('common.success'));
+      }
+    } catch {
+      toast.error(t('common.error'));
+    }
+  };
+
+  // Cancel subtask edit
+  const cancelSubtaskEdit = () => {
+    setEditingSubtaskId(null);
+    setEditingSubtaskTitle('');
+  };
+
+  // Drag and drop handlers for subtasks
+  const handleSubtaskDragStart = (subtask: Subtask) => {
+    setDraggedSubtask(subtask);
+  };
+
+  const handleSubtaskDragOver = (e: React.DragEvent, subtaskId: string) => {
+    e.preventDefault();
+    setDragOverSubtask(subtaskId);
+  };
+
+  const handleSubtaskDragLeave = () => {
+    setDragOverSubtask(null);
+  };
+
+  const handleSubtaskDrop = async (targetSubtask: Subtask) => {
+    if (!draggedSubtask || draggedSubtask.id === targetSubtask.id) {
+      setDraggedSubtask(null);
+      setDragOverSubtask(null);
+      return;
+    }
+
+    // Reorder subtasks
+    const newSubtasks = [...subtasks];
+    const draggedIndex = newSubtasks.findIndex(s => s.id === draggedSubtask.id);
+    const targetIndex = newSubtasks.findIndex(s => s.id === targetSubtask.id);
+    
+    if (draggedIndex !== -1 && targetIndex !== -1) {
+      newSubtasks.splice(draggedIndex, 1);
+      newSubtasks.splice(targetIndex, 0, draggedSubtask);
+      
+      // Update sort_order for all affected subtasks
+      const updates = newSubtasks.map((subtask, index) => ({
+        id: subtask.id,
+        sort_order: index
+      }));
+      
+      setSubtasks(newSubtasks);
+      
+      // Save to server
+      try {
+        await api.put('/api/subtasks', { 
+          id: draggedSubtask.id, 
+          sortOrder: targetIndex 
+        });
+        // Update other subtasks' sort_order
+        for (const update of updates) {
+          if (update.id !== draggedSubtask.id) {
+            await api.put('/api/subtasks', { 
+              id: update.id, 
+              sortOrder: update.sort_order 
+            });
+          }
+        }
+      } catch {
+        toast.error(t('common.error'));
+      }
+    }
+    
+    setDraggedSubtask(null);
+    setDragOverSubtask(null);
+  };
+
+  const handleSubtaskDragEnd = () => {
+    setDraggedSubtask(null);
+    setDragOverSubtask(null);
   };
 
   // Save description
@@ -565,7 +670,15 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                   subtasks.map((subtask) => (
                     <div 
                       key={subtask.id}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors group"
+                      draggable
+                      onDragStart={() => handleSubtaskDragStart(subtask)}
+                      onDragOver={(e) => handleSubtaskDragOver(e, subtask.id)}
+                      onDragLeave={handleSubtaskDragLeave}
+                      onDrop={() => handleSubtaskDrop(subtask)}
+                      onDragEnd={handleSubtaskDragEnd}
+                      className={`flex items-center gap-3 p-3 rounded-lg bg-muted/50 transition-all group cursor-grab active:cursor-grabbing ${
+                        dragOverSubtask === subtask.id ? 'bg-primary/20 border-2 border-primary/50' : 'hover:bg-muted'
+                      } ${draggedSubtask?.id === subtask.id ? 'opacity-50' : ''}`}
                     >
                       <button
                         onClick={() => toggleSubtask(subtask.id, subtask.completed)}
@@ -577,17 +690,70 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                           <Circle className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
                         )}
                       </button>
-                      <span className={`flex-1 ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
-                        {subtask.title}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
-                        onClick={() => deleteSubtask(subtask.id)}
-                      >
-                        <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
-                      </Button>
+                      
+                      {editingSubtaskId === subtask.id ? (
+                        // Editing mode
+                        <Input
+                          value={editingSubtaskTitle}
+                          onChange={(e) => setEditingSubtaskTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveSubtaskEdit(subtask.id);
+                            if (e.key === 'Escape') cancelSubtaskEdit();
+                          }}
+                          className="flex-1 h-8"
+                          autoFocus
+                        />
+                      ) : (
+                        // Display mode
+                        <span 
+                          className={`flex-1 cursor-pointer ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}
+                          onClick={() => !subtask.completed && startEditSubtask(subtask)}
+                        >
+                          {subtask.title}
+                        </span>
+                      )}
+                      
+                      {editingSubtaskId === subtask.id ? (
+                        // Save/Cancel buttons
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => saveSubtaskEdit(subtask.id)}
+                          >
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={cancelSubtaskEdit}
+                          >
+                            <X className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        </>
+                      ) : (
+                        // Edit/Delete buttons
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                            onClick={() => startEditSubtask(subtask)}
+                          >
+                            <Edit2 className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                            onClick={() => deleteSubtask(subtask.id)}
+                          >
+                            <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
+                          </Button>
+                        </>
+                      )}
                     </div>
                   ))
                 )}
