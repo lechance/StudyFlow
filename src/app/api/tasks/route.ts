@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     query += ' ORDER BY CASE priority WHEN \'high\' THEN 1 WHEN \'medium\' THEN 2 WHEN \'low\' THEN 3 END, plan_date ASC, deadline ASC';
 
-    const tasks = db.prepare(query).all(user.id) as Task[];
+    const tasks = db.prepare(query).all(...params) as Task[];
 
     // Calculate subtask progress for each task
     const tasksWithProgress = tasks.map(task => {

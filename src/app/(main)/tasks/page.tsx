@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTasks } from '@/hooks/useTasks';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/lib/i18n';
@@ -58,11 +58,8 @@ import {
   X,
   Pin,
   PinOff,
-  Flame,
   Target,
   ChevronRight,
-  TrendingUp,
-  CheckCircle,
   AlertCircle,
   CalendarDays,
   Timer
@@ -81,9 +78,8 @@ const PRIORITY_CONFIG: Record<string, { labelKey: string; textColor: string; bgC
 type ViewTab = 'today' | 'week' | 'all';
 
 export default function TasksPage() {
-  const { user } = useAuth();
   const { tasks, loading, addTask, updateTask, deleteTask, clearCompleted, fetchTasks } = useTasks();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   
   // View state
   const [activeTab, setActiveTab] = useState<ViewTab>('today');
@@ -130,52 +126,7 @@ export default function TasksPage() {
     });
   }, [tasks]);
 
-  // Stats for different views
-  const todayStats = useMemo(() => {
-    const total = todayTasks.length;
-    const completed = todayTasks.filter(t => t.status === 'completed').length;
-    const pending = todayTasks.filter(t => t.status !== 'completed').length;
-    
-    // Calculate subtask stats
-    let subtaskTotal = 0;
-    let subtaskCompleted = 0;
-    todayTasks.forEach(task => {
-      subtaskTotal += task.subtask_total || 0;
-      subtaskCompleted += task.subtask_completed || 0;
-    });
-    
-    return { 
-      total, 
-      completed, 
-      pending, 
-      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
-      subtaskTotal,
-      subtaskCompleted,
-      subtaskProgress: subtaskTotal > 0 ? Math.round((subtaskCompleted / subtaskTotal) * 100) : 0
-    };
-  }, [todayTasks]);
-
-  const weekStats = useMemo(() => {
-    const total = weekTasks.length;
-    const completed = weekTasks.filter(t => t.status === 'completed').length;
-    
-    let subtaskTotal = 0;
-    let subtaskCompleted = 0;
-    weekTasks.forEach(task => {
-      subtaskTotal += task.subtask_total || 0;
-      subtaskCompleted += task.subtask_completed || 0;
-    });
-    
-    return { 
-      total, 
-      completed, 
-      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
-      subtaskTotal,
-      subtaskCompleted,
-      subtaskProgress: subtaskTotal > 0 ? Math.round((subtaskCompleted / subtaskTotal) * 100) : 0
-    };
-  }, [weekTasks]);
-
+  // Filtered tasks based on active tab
   const overallStats = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter(t => t.status === 'completed').length;
@@ -210,8 +161,8 @@ export default function TasksPage() {
       if (res.success) {
         setSubtasks(res.data || []);
       }
-    } catch (error) {
-      console.error('Failed to fetch subtasks:', error);
+    } catch {
+      console.error('Failed to fetch subtasks');
     }
   };
 
@@ -233,7 +184,7 @@ export default function TasksPage() {
         ));
         await fetchTasks();
       }
-    } catch (error) {
+    } catch {
       toast.error(t('common.error'));
     }
   };
@@ -251,7 +202,7 @@ export default function TasksPage() {
         setNewSubtaskTitle('');
         toast.success(t('common.success'));
       }
-    } catch (error) {
+    } catch {
       toast.error(t('common.error'));
     }
   };
@@ -264,7 +215,7 @@ export default function TasksPage() {
         setSubtasks(prev => prev.filter(s => s.id !== subtaskId));
         toast.success(t('common.success'));
       }
-    } catch (error) {
+    } catch {
       toast.error(t('common.error'));
     }
   };
@@ -310,7 +261,6 @@ export default function TasksPage() {
     try {
       let planDate = todayStr;
       if (targetType === 'week') {
-        const weekEnd = addDays(new Date(), 7);
         for (let i = 0; i <= 7; i++) {
           const checkDate = addDays(new Date(), i);
           const dateStr = format(checkDate, 'yyyy-MM-dd');
@@ -327,7 +277,7 @@ export default function TasksPage() {
         toast.success(targetType === 'today' ? t('tasks.addedToToday') : t('tasks.addedToWeek'));
         await fetchTasks();
       }
-    } catch (error) {
+    } catch {
       toast.error(t('common.error'));
     }
   };
@@ -340,7 +290,7 @@ export default function TasksPage() {
         toast.success(t('tasks.removedFromPlan'));
         await fetchTasks();
       }
-    } catch (error) {
+    } catch {
       toast.error(t('common.error'));
     }
   };

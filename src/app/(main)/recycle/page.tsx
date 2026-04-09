@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useTasks } from '@/hooks/useTasks';
 import { useLanguage } from '@/lib/i18n';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -29,7 +29,7 @@ import { toast } from 'sonner';
 
 export default function RecyclePage() {
   const { recycleBin, fetchRecycleBin, restoreTask, clearRecycleBin } = useTasks();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [clearing, setClearing] = useState(false);
   const [restoring, setRestoring] = useState<string | null>(null);
 

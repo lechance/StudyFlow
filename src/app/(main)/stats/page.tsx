@@ -8,17 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { statsApi } from '@/lib/api';
 import { BarChart3, TrendingUp, Clock, Target, Flame, Calendar } from 'lucide-react';
-import { format, subDays, isToday } from 'date-fns';
+import { format, isToday } from 'date-fns';
 
 export default function StatsPage() {
   const { t, language } = useLanguage();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
-
-  useEffect(() => {
-    loadStats();
-  }, [days]);
 
   const loadStats = async () => {
     setLoading(true);
@@ -28,6 +24,10 @@ export default function StatsPage() {
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    loadStats();
+  }, [days]);
 
   if (loading) {
     return (

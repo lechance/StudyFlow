@@ -7,16 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { plansApi, studyApi, tasksApi } from '@/lib/api';
 import { toast } from 'sonner';
-import { format, addDays, subDays, isToday, isSameDay, startOfWeek, endOfWeek } from 'date-fns';
+import { format, addDays, subDays, isToday, startOfWeek, endOfWeek } from 'date-fns';
 import { 
   Calendar, 
   CheckCircle, 
@@ -32,12 +25,11 @@ import {
 
 export default function PlansPage() {
   const { user, refreshUser } = useAuth();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [checkIns, setCheckIns] = useState<any[]>([]);
   const [todayTasks, setTodayTasks] = useState<any[]>([]);
   const [weekStats, setWeekStats] = useState<any>(null);
   const [weekDates, setWeekDates] = useState<Date[]>([]);
-  const [loading, setLoading] = useState(false);
 
   // Generate week dates centered around today
   const generateWeekDates = useCallback((centerDate: Date) => {
@@ -97,12 +89,10 @@ export default function PlansPage() {
 
   useEffect(() => {
     const loadData = async () => {
-      setLoading(true);
       await Promise.all([
         loadCheckIns(),
         loadTodayTasks()
       ]);
-      setLoading(false);
     };
     loadData();
   }, [loadCheckIns, loadTodayTasks]);

@@ -6,7 +6,6 @@ import { useLanguage } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
   DialogContent,
@@ -40,9 +39,9 @@ const DEFAULT_SETTINGS: TimerSettings = {
 };
 
 export default function PomodoroPage() {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const { tasks } = useTasks();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [settings, setSettings] = useState<TimerSettings>(DEFAULT_SETTINGS);
   const [mode, setMode] = useState<TimerMode>('focus');
   const [timeLeft, setTimeLeft] = useState(DEFAULT_SETTINGS.focusDuration * 60);
@@ -138,7 +137,7 @@ export default function PomodoroPage() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isRunning, timeLeft, mode, sessions, settings, selectedTaskId, t, language]);
+  }, [isRunning, timeLeft, mode, sessions, settings, selectedTaskId, t]);
 
   // Initialize
   useEffect(() => {
@@ -413,7 +412,6 @@ export default function PomodoroPage() {
         settings={settings}
         onSave={saveSettings}
         t={t}
-        language={language}
       />
 
       {/* Task Select Dialog */}
@@ -427,7 +425,6 @@ export default function PomodoroPage() {
           setShowTaskSelect(false);
         }}
         t={t}
-        language={language}
       />
     </div>
   );
@@ -440,14 +437,12 @@ function SettingsDialog({
   settings,
   onSave,
   t,
-  language,
 }: {
   open: boolean;
   onClose: () => void;
   settings: TimerSettings;
   onSave: (settings: TimerSettings) => void;
   t: (key: string) => string;
-  language: string;
 }) {
   const [localSettings, setLocalSettings] = useState(settings);
 
@@ -521,7 +516,6 @@ function TaskSelectDialog({
   selectedTaskId,
   onSelect,
   t,
-  language,
 }: {
   open: boolean;
   onClose: () => void;
@@ -529,7 +523,6 @@ function TaskSelectDialog({
   selectedTaskId: string | null;
   onSelect: (taskId: string | null) => void;
   t: (key: string) => string;
-  language: string;
 }) {
   return (
     <Dialog open={open} onOpenChange={onClose}>

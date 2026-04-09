@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/hooks/useTasks';
 import { useLanguage } from '@/lib/i18n';
@@ -27,17 +27,13 @@ import {
 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const { tasks, loading: tasksLoading } = useTasks();
   const { t, language } = useLanguage();
   const [stats, setStats] = useState<any>(null);
   const [todayCheckIn, setTodayCheckIn] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     const statsRes = await statsApi.getStats(7);
     if (statsRes.success) {
       setStats(statsRes.data);
@@ -49,7 +45,11 @@ export default function DashboardPage() {
       const checked = checkInRes.data.checkIns.some((c: any) => c.date === today);
       setTodayCheckIn(checked);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   // Calculate stats
   const pendingTasks = tasks.filter(t => t.status !== 'completed').length;
