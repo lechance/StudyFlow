@@ -146,6 +146,33 @@ function initializeTables(database: Database.Database) {
       console.log('Migration note:', e.message);
     }
   }
+  
+  // 创建默认管理员用户
+  createDefaultAdmin(database);
+}
+
+function createDefaultAdmin(database: Database.Database) {
+  const existingAdmin = database.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+  if (!existingAdmin) {
+    // 使用与 auth.ts 一致的简单哈希和密钥
+    const crypto = require('crypto');
+    const SESSION_SECRET = 'study-app-secret-key-2024';
+    const hashedPassword = crypto.createHash('sha256').update('admin123' + SESSION_SECRET).digest('hex');
+    const adminId = generateId();
+    
+    database.prepare(`
+      INSERT INTO users (id, username, password, email, role, streak_days, total_study_time)
+      VALUES (?, ?, ?, ?, 'admin', 0, 0)
+    `).run(adminId, 'admin', hashedPassword, 'admin@studyflow.local');
+    
+    // 创建管理员的默认番茄钟设置
+    database.prepare(`
+      INSERT INTO pomodoro_settings (id, user_id, focus_duration, break_duration, long_break_duration, sessions_before_long_break)
+      VALUES (?, ?, 25, 5, 15, 4)
+    `).run(generateId(), adminId);
+    
+    console.log('Default admin user created: admin / admin123');
+  }
 }
 
 export function generateId(): string {

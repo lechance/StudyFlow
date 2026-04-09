@@ -36,8 +36,11 @@ export default function LoginPage() {
     setError('');
     
     const result = await login(loginUsername, loginPassword);
-    if (!result.success) {
-      setError(t('auth.invalidCredentials'));
+    if (result.success) {
+      // 登录成功，跳转到首页
+      window.location.href = '/dashboard';
+    } else {
+      setError(result.error || t('auth.invalidCredentials'));
     }
     
     setLoading(false);
@@ -61,7 +64,10 @@ export default function LoginPage() {
     }
     
     const result = await register(regUsername, regPassword, regEmail || undefined);
-    if (!result.success) {
+    if (result.success) {
+      // 注册成功，跳转到首页
+      window.location.href = '/dashboard';
+    } else {
       setError(result.error || t('common.error'));
     }
     
