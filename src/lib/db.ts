@@ -43,6 +43,7 @@ function initializeTables(database: Database.Database) {
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
       title TEXT NOT NULL,
+      description TEXT,
       category TEXT,
       priority TEXT DEFAULT 'medium',
       status TEXT DEFAULT 'pending',
@@ -135,6 +136,16 @@ function initializeTables(database: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_check_ins_user_date ON check_ins(user_id, date);
     CREATE INDEX IF NOT EXISTS idx_subtasks_task_id ON subtasks(task_id);
   `);
+  
+  // Migration: Add description column if it doesn't exist
+  try {
+    database.exec("ALTER TABLE tasks ADD COLUMN description TEXT");
+  } catch (e: any) {
+    // Column already exists, ignore error
+    if (!e.message.includes('duplicate column name')) {
+      console.log('Migration note:', e.message);
+    }
+  }
 }
 
 export function generateId(): string {

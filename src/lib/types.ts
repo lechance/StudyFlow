@@ -15,6 +15,7 @@ export interface Task {
   id: string;
   user_id: string;
   title: string;
+  description?: string;
   category: string;
   priority: 'high' | 'medium' | 'low';
   status: 'pending' | 'in_progress' | 'completed';

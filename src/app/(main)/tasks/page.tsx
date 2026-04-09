@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTasks } from '@/hooks/useTasks';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/lib/i18n';
@@ -78,6 +79,7 @@ const PRIORITY_CONFIG: Record<string, { labelKey: string; textColor: string; bgC
 type ViewTab = 'today' | 'week' | 'all';
 
 export default function TasksPage() {
+  const router = useRouter();
   const { tasks, loading, addTask, updateTask, deleteTask, clearCompleted, fetchTasks } = useTasks();
   const { t } = useLanguage();
   
@@ -87,14 +89,8 @@ export default function TasksPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
-  const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
-  const [detailTask, setDetailTask] = useState<any>(null);
   
-  // Subtask state
-  const [subtasks, setSubtasks] = useState<any[]>([]);
-  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
-
   // New task form
   const [newTask, setNewTask] = useState({
     title: '',
@@ -148,72 +144,6 @@ export default function TasksPage() {
   const unPlannedTasks = useMemo(() => {
     return tasks.filter(task => !task.plan_date && task.status !== 'completed');
   }, [tasks]);
-
-  // Get tasks not in any plan
-  const fetchSubtasks = async (taskId: string) => {
-    try {
-      const res = await api.get(`/api/subtasks?taskId=${taskId}`);
-      if (res.success) {
-        setSubtasks(res.data || []);
-      }
-    } catch {
-      console.error('Failed to fetch subtasks');
-    }
-  };
-
-  // Open task detail dialog
-  const openTaskDetail = async (task: any) => {
-    setDetailTask(task);
-    await fetchSubtasks(task.id);
-    setShowDetailDialog(true);
-  };
-
-  // Toggle subtask completion
-  const toggleSubtask = async (subtaskId: string, currentCompleted: number) => {
-    try {
-      const newCompleted = currentCompleted ? 0 : 1;
-      const res = await api.put('/api/subtasks', { id: subtaskId, completed: newCompleted });
-      if (res.success) {
-        setSubtasks(prev => prev.map(s => 
-          s.id === subtaskId ? { ...s, completed: newCompleted } : s
-        ));
-        await fetchTasks();
-      }
-    } catch {
-      toast.error(t('common.error'));
-    }
-  };
-
-  // Add new subtask
-  const addSubtask = async () => {
-    if (!newSubtaskTitle.trim() || !detailTask) return;
-    try {
-      const res = await api.post('/api/subtasks', { 
-        taskId: detailTask.id, 
-        title: newSubtaskTitle.trim() 
-      });
-      if (res.success) {
-        setSubtasks(prev => [...prev, res.data]);
-        setNewSubtaskTitle('');
-        toast.success(t('common.success'));
-      }
-    } catch {
-      toast.error(t('common.error'));
-    }
-  };
-
-  // Delete subtask
-  const deleteSubtask = async (subtaskId: string) => {
-    try {
-      const res = await api.del(`/api/subtasks?id=${subtaskId}`);
-      if (res.success) {
-        setSubtasks(prev => prev.filter(s => s.id !== subtaskId));
-        toast.success(t('common.success'));
-      }
-    } catch {
-      toast.error(t('common.error'));
-    }
-  };
 
   const handleAddTask = async () => {
     if (!newTask.title.trim()) {
@@ -388,39 +318,41 @@ export default function TasksPage() {
     };
   };
 
-  // Render task card with detailed info
+  // Render task card with detailed info - clickable to view detail
   const renderTaskCard = (task: any, showPlanInfo: boolean = false, isTodayTask: boolean = false) => {
     const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
     const hasSubtasks = (task.subtask_total || 0) > 0;
     const subtaskProgress = task.subtask_progress || 0;
     const deadlineInfo = getDeadlineInfo(task);
     const isCompleted = task.status === 'completed';
+    const completedSubtasks = task.subtask_completed || 0;
+    const totalSubtasks = task.subtask_total || 0;
 
-    // Calculate overall task progress
-    const taskProgress = isCompleted ? 100 : hasSubtasks ? subtaskProgress : 0;
+    // Navigate to task detail page
+    const handleCardClick = () => {
+      router.push(`/tasks/${task.id}`);
+    };
 
     return (
       <Card
         key={task.id}
-        className={`card-hover transition-all ${isCompleted ? 'opacity-60' : ''} ${
+        className={`card-hover transition-all cursor-pointer ${isCompleted ? 'opacity-60' : ''} ${
           deadlineInfo?.urgent ? `border ${deadlineInfo.borderColor}` : ''
         }`}
+        onClick={handleCardClick}
       >
-        {/* Progress bar at top of card */}
-        <div className="h-1 bg-muted rounded-t-lg overflow-hidden">
-          <div 
-            className={`h-full transition-all duration-300 ${isCompleted ? 'bg-emerald-500' : hasSubtasks ? 'bg-blue-500' : 'bg-muted'}`}
-            style={{ width: `${taskProgress}%` }}
-          />
-        </div>
         <CardContent className="p-4">
           {/* Header Row */}
-          <div className="flex items-start gap-3 mb-3">
-            <Checkbox
-              checked={isCompleted}
-              onCheckedChange={(checked) => handleStatusChange(task.id, checked ? 'completed' : 'pending')}
-              className="mt-1 w-5 h-5"
-            />
+          <div className="flex items-start gap-3">
+            <div onClick={(e) => e.stopPropagation()}>
+              <Checkbox
+                checked={isCompleted}
+                onCheckedChange={(checked) => {
+                  handleStatusChange(task.id, checked ? 'completed' : 'pending');
+                }}
+                className="mt-1 w-5 h-5"
+              />
+            </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2 mb-1">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -431,18 +363,6 @@ export default function TasksPage() {
                     {task.title}
                   </span>
                 </div>
-                {/* Progress indicator */}
-                {hasSubtasks && (
-                  <div className="flex items-center gap-1.5 text-xs">
-                    <div className="w-12 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-blue-500 rounded-full transition-all"
-                        style={{ width: `${subtaskProgress}%` }}
-                      />
-                    </div>
-                    <span className="text-muted-foreground whitespace-nowrap">{subtaskProgress}%</span>
-                  </div>
-                )}
               </div>
               
               {/* Meta Info Row */}
@@ -463,7 +383,7 @@ export default function TasksPage() {
             </div>
             
             {/* Quick Actions */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
               {!task.plan_date && !isCompleted && (
                 <Button
                   variant="ghost"
@@ -522,8 +442,8 @@ export default function TasksPage() {
           </div>
 
           {/* Deadline & Plan Info */}
-          {showPlanInfo && (
-            <div className="flex items-center gap-4 mb-3 px-1">
+          {showPlanInfo && (deadlineInfo || task.plan_date) && (
+            <div className="flex items-center gap-4 mt-3 px-1">
               {deadlineInfo && (
                 <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${deadlineInfo.color}`}>
                   {deadlineInfo.icon}
@@ -538,43 +458,28 @@ export default function TasksPage() {
               )}
             </div>
           )}
-
-          {/* Subtasks Preview */}
-          {hasSubtasks && task.subtasks && task.subtasks.length > 0 && (
-            <div className="pl-4 space-y-1 mt-2">
-              {task.subtasks.slice(0, 3).map((subtask: any) => (
-                <div key={subtask.id} className="flex items-center gap-2 text-sm">
-                  {subtask.completed ? (
-                    <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                  ) : (
-                    <Circle className="w-3 h-3 text-muted-foreground" />
-                  )}
-                  <span className={subtask.completed ? 'line-through text-muted-foreground' : ''}>
-                    {subtask.title}
-                  </span>
-                </div>
-              ))}
-              {task.subtasks.length > 3 && (
-                <Button
-                  variant="link"
-                  className="text-xs text-blue-500 p-0 h-auto"
-                  onClick={() => openTaskDetail(task)}
-                >
-                  +{task.subtasks.length - 3} {t('tasks.moreTasks')}
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Click to view details */}
-          <Button
-            variant="ghost"
-            className="w-full mt-2 text-xs text-muted-foreground"
-            onClick={() => openTaskDetail(task)}
-          >
-            {t('common.viewDetails')} <ChevronRight className="w-3 h-3 ml-1" />
-          </Button>
         </CardContent>
+        
+        {/* Footer: Subtask Progress */}
+        {hasSubtasks && (
+          <div className="px-4 pb-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+              <span className="flex items-center gap-1">
+                <ListTodo className="w-3 h-3" />
+                {completedSubtasks}/{totalSubtasks} {t('tasks.subtasks')}
+              </span>
+              <span className="font-medium">{subtaskProgress}%</span>
+            </div>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all duration-300 ${
+                  subtaskProgress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-500 to-cyan-500'
+                }`}
+                style={{ width: `${subtaskProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
       </Card>
     );
   };
@@ -993,124 +898,6 @@ export default function TasksPage() {
         </TabsContent>
       </Tabs>
 
-      {/* Task Detail Dialog */}
-      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-xl">{detailTask?.title}</DialogTitle>
-            <DialogDescription>
-              <div className="flex flex-wrap items-center gap-3 mt-2">
-                {detailTask?.plan_date && (
-                  <span className="flex items-center gap-1 text-sm bg-blue-50 text-blue-600 px-2 py-1 rounded">
-                    <CalendarDays className="w-4 h-4" />
-                    {t('tasks.planDate')}: {format(new Date(detailTask.plan_date), 'yyyy-MM-dd')}
-                  </span>
-                )}
-                {detailTask?.deadline && (
-                  <span className="flex items-center gap-1 text-sm bg-orange-50 text-orange-600 px-2 py-1 rounded">
-                    <Clock className="w-4 h-4" />
-                    {t('tasks.deadline')}: {format(new Date(detailTask.deadline), 'yyyy-MM-dd')}
-                  </span>
-                )}
-                {detailTask?.estimated_time && (
-                  <span className="flex items-center gap-1 text-sm bg-purple-50 text-purple-600 px-2 py-1 rounded">
-                    <Timer className="w-4 h-4" />
-                    {detailTask.estimated_time} {t('common.minutes')}
-                  </span>
-                )}
-              </div>
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            {/* Task Info */}
-            <div className="flex flex-wrap gap-2">
-              <Badge variant="outline" className={PRIORITY_CONFIG[detailTask?.priority]?.textColor}>
-                {t(PRIORITY_CONFIG[detailTask?.priority]?.labelKey || 'priority.medium')}
-              </Badge>
-              <Badge variant="secondary">{t(`category.${detailTask?.category}`)}</Badge>
-              {detailTask?.status === 'completed' && (
-                <Badge className="bg-green-500">{t('tasks.completed')}</Badge>
-              )}
-            </div>
-
-            {/* Subtasks Section */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium flex items-center gap-2">
-                  <ListTodo className="w-4 h-4 text-blue-500" />
-                  {t('tasks.subtasks')}
-                </h4>
-                {subtasks.length > 0 && (
-                  <span className="text-sm text-muted-foreground">
-                    {subtasks.filter(s => s.completed).length}/{subtasks.length}
-                  </span>
-                )}
-              </div>
-              
-              {/* Subtask Progress */}
-              {subtasks.length > 0 && (
-                <Progress 
-                  value={(subtasks.filter(s => s.completed).length / subtasks.length) * 100} 
-                  className="h-3" 
-                />
-              )}
-
-              {/* Subtask List */}
-              <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {subtasks.map((subtask) => (
-                  <div 
-                    key={subtask.id} 
-                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 group"
-                  >
-                    <Checkbox
-                      checked={subtask.completed === 1}
-                      onCheckedChange={() => toggleSubtask(subtask.id, subtask.completed)}
-                    />
-                    <span className={`flex-1 ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
-                      {subtask.title}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:text-destructive"
-                      onClick={() => deleteSubtask(subtask.id)}
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                ))}
-                {subtasks.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    {t('tasks.noSubtasks')}
-                  </p>
-                )}
-              </div>
-
-              {/* Add Subtask */}
-              <div className="flex gap-2 pt-2">
-                <Input
-                  placeholder={t('tasks.addSubtaskPlaceholder')}
-                  value={newSubtaskTitle}
-                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') addSubtask();
-                  }}
-                />
-                <Button onClick={addSubtask} disabled={!newSubtaskTitle.trim()}>
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
-              {t('common.close')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Edit Task Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
