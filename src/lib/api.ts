@@ -139,15 +139,6 @@ export const plansApi = {
       method: 'POST',
       body: JSON.stringify({ date, content }),
     }),
-
-  getCheckIns: (days = 7) =>
-    fetchApi<any>(`/plans/checkin?days=${days}`),
-
-  checkIn: (date?: string) =>
-    fetchApi<any>('/plans/checkin', {
-      method: 'POST',
-      body: JSON.stringify({ date }),
-    }),
 };
 
 // 统计数据 API

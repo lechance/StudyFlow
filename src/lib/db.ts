@@ -81,16 +81,6 @@ function initializeTables(database: Database.Database) {
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
-    -- 打卡记录表
-    CREATE TABLE IF NOT EXISTS check_ins (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      date TEXT NOT NULL,
-      streak INTEGER DEFAULT 1,
-      created_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (user_id) REFERENCES users(id)
-    );
-
     -- 回收站表（软删除的任务）
     CREATE TABLE IF NOT EXISTS recycle_bin (
       id TEXT PRIMARY KEY,
@@ -133,7 +123,6 @@ function initializeTables(database: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
     CREATE INDEX IF NOT EXISTS idx_study_records_user_date ON study_records(user_id, date);
     CREATE INDEX IF NOT EXISTS idx_daily_plans_user_date ON daily_plans(user_id, date);
-    CREATE INDEX IF NOT EXISTS idx_check_ins_user_date ON check_ins(user_id, date);
     CREATE INDEX IF NOT EXISTS idx_subtasks_task_id ON subtasks(task_id);
   `);
   

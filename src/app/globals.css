@@ -216,16 +216,3 @@ body {
 .progress-bar {
   transition: width 0.5s ease-out;
 }
-
-/* 打卡日历样式 */
-.checkin-day {
-  transition: all 0.2s ease;
-}
-
-.checkin-day:hover {
-  transform: scale(1.1);
-}
-
-.checkin-day.checked {
-  background: linear-gradient(135deg, #10b981 0%, #06b6d4 100%);
-}

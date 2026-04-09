@@ -52,14 +52,6 @@ export interface DailyPlan {
   updated_at: string;
 }
 
-export interface CheckIn {
-  id: string;
-  user_id: string;
-  date: string;
-  streak: number;
-  created_at: string;
-}
-
 export interface PomodoroSettings {
   id: string;
   user_id: string;

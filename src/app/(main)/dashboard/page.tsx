@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { statsApi, plansApi } from '@/lib/api';
+import { statsApi } from '@/lib/api';
 import { format } from 'date-fns';
 import {
   BookOpen,
@@ -31,19 +31,11 @@ export default function DashboardPage() {
   const { tasks, loading: tasksLoading } = useTasks();
   const { t, language } = useLanguage();
   const [stats, setStats] = useState<any>(null);
-  const [todayCheckIn, setTodayCheckIn] = useState(false);
 
   const loadData = useCallback(async () => {
     const statsRes = await statsApi.getStats(7);
     if (statsRes.success) {
       setStats(statsRes.data);
-    }
-
-    const checkInRes = await plansApi.getCheckIns(1);
-    if (checkInRes.success && checkInRes.data?.checkIns?.length > 0) {
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const checked = checkInRes.data.checkIns.some((c: any) => c.date === today);
-      setTodayCheckIn(checked);
     }
   }, []);
 
@@ -74,7 +66,7 @@ export default function DashboardPage() {
             {t('dashboard.greeting', { username: user?.username || '' })}
           </h1>
           <p className="text-white/80">
-            {todayCheckIn ? t('dashboard.checkedIn') : t('dashboard.keepGoing')}
+            {t('dashboard.readyToStudy')}
           </p>
         </div>
         <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3" />
@@ -183,10 +175,10 @@ export default function DashboardPage() {
                     {t('dashboard.viewTasks')}
                   </Button>
                 </Link>
-                <Link href="/plans" className="flex-1">
+                <Link href="/tasks" className="flex-1">
                   <Button className="gradient-bg w-full">
                     <Calendar className="w-4 h-4 mr-2" />
-                    {t('dashboard.makePlan')}
+                    {t('dashboard.manageTasks')}
                   </Button>
                 </Link>
               </div>
@@ -221,10 +213,10 @@ export default function DashboardPage() {
                 <ArrowRight className="w-4 h-4 ml-auto" />
               </Button>
             </Link>
-            <Link href="/plans">
+            <Link href="/tasks">
               <Button variant="outline" className="w-full justify-start">
                 <CheckCircle className="w-5 h-5 mr-3 text-amber-500" />
-                {t('dashboard.checkIn')}
+                {t('dashboard.viewTasks')}
                 <ArrowRight className="w-4 h-4 ml-auto" />
               </Button>
             </Link>

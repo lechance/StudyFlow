@@ -40,7 +40,6 @@ export async function DELETE(
     db.prepare('DELETE FROM tasks WHERE user_id = ?').run(id);
     db.prepare('DELETE FROM study_records WHERE user_id = ?').run(id);
     db.prepare('DELETE FROM daily_plans WHERE user_id = ?').run(id);
-    db.prepare('DELETE FROM check_ins WHERE user_id = ?').run(id);
     db.prepare('DELETE FROM recycle_bin WHERE user_id = ?').run(id);
     db.prepare('DELETE FROM pomodoro_settings WHERE user_id = ?').run(id);
     db.prepare('DELETE FROM users WHERE id = ?').run(id);
