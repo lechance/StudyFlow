@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useTasks } from '@/hooks/useTasks';
+import { useLanguage } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -49,13 +50,19 @@ import {
   Filter,
   SortAsc
 } from 'lucide-react';
-import { PRIORITY_CONFIG, STATUS_CONFIG, TASK_CATEGORIES } from '@/lib/types';
+import { TASK_CATEGORIES } from '@/lib/types';
 import { format, differenceInDays, isPast, isToday } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
 import { toast } from 'sonner';
+
+const PRIORITY_CONFIG: Record<string, { label: string; textColor: string }> = {
+  high: { label: '高', textColor: 'text-red-500' },
+  medium: { label: '中', textColor: 'text-yellow-500' },
+  low: { label: '低', textColor: 'text-green-500' },
+};
 
 export default function TasksPage() {
   const { tasks, loading, addTask, updateTask, deleteTask, clearCompleted } = useTasks();
+  const { t, language } = useLanguage();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
@@ -64,20 +71,30 @@ export default function TasksPage() {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'priority' | 'deadline'>('priority');
 
-  // 新任务表单
+  // New task form
   const [newTask, setNewTask] = useState({
     title: '',
-    category: '学习',
+    category: language === 'zh-CN' ? '学习' : 'Study',
     priority: 'medium',
     deadline: '',
     estimated_time: ''
   });
 
-  // 过滤和排序任务
+  // Update category options based on language
+  const categoryLabels = {
+    'zh-CN': { '学习': '学习', '工作': '工作', '阅读': '阅读', '运动': '运动', '其他': '其他' },
+    'en': { 'Study': 'Study', 'Work': 'Work', 'Reading': 'Reading', 'Exercise': 'Exercise', 'Other': 'Other' }
+  };
+  
+  const categories = language === 'zh-CN' 
+    ? ['学习', '工作', '阅读', '运动', '其他']
+    : ['Study', 'Work', 'Reading', 'Exercise', 'Other'];
+
+  // Filter and sort tasks
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
     
-    // 过滤
+    // Filter
     if (filterStatus !== 'all') {
       result = result.filter(t => t.status === filterStatus);
     }
@@ -85,7 +102,7 @@ export default function TasksPage() {
       result = result.filter(t => t.category === filterCategory);
     }
     
-    // 排序
+    // Sort
     if (sortBy === 'priority') {
       result.sort((a, b) => {
         const priorityOrder = { high: 1, medium: 2, low: 3 };
@@ -102,7 +119,7 @@ export default function TasksPage() {
     return result;
   }, [tasks, filterStatus, filterCategory, sortBy]);
 
-  // 统计数据
+  // Stats
   const stats = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter(t => t.status === 'completed').length;
@@ -114,7 +131,7 @@ export default function TasksPage() {
 
   const handleAddTask = async () => {
     if (!newTask.title.trim()) {
-      toast.error('请输入任务名称');
+      toast.error(t('tasks.taskName') + ' ' + (language === 'zh-CN' ? '不能为空' : 'required'));
       return;
     }
 
@@ -128,11 +145,17 @@ export default function TasksPage() {
     });
 
     if (success) {
-      toast.success('任务创建成功');
+      toast.success(t('tasks.taskCreated'));
       setShowAddDialog(false);
-      setNewTask({ title: '', category: '学习', priority: 'medium', deadline: '', estimated_time: '' });
+      setNewTask({ 
+        title: '', 
+        category: language === 'zh-CN' ? '学习' : 'Study', 
+        priority: 'medium', 
+        deadline: '', 
+        estimated_time: '' 
+      });
     } else {
-      toast.error('创建失败');
+      toast.error(t('common.error'));
     }
   };
 
@@ -148,31 +171,31 @@ export default function TasksPage() {
     });
 
     if (success) {
-      toast.success('任务更新成功');
+      toast.success(t('tasks.taskUpdated'));
       setShowEditDialog(false);
       setEditingTask(null);
     } else {
-      toast.error('更新失败');
+      toast.error(t('common.error'));
     }
   };
 
   const handleStatusChange = async (taskId: string, status: 'pending' | 'in_progress' | 'completed') => {
     await updateTask(taskId, { status });
     if (status === 'completed') {
-      toast.success('太棒了！任务完成');
+      toast.success(language === 'zh-CN' ? '太棒了！任务完成' : 'Great job! Task completed');
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
     await deleteTask(taskId);
-    toast.success('任务已移入回收站');
+    toast.success(t('tasks.taskDeleted'));
   };
 
   const handleClearCompleted = async () => {
     const completedIds = tasks.filter(t => t.status === 'completed').map(t => t.id);
     await clearCompleted(completedIds);
     setShowClearDialog(false);
-    toast.success('已完成任务已清空');
+    toast.success(t('tasks.cleared'));
   };
 
   const getDeadlineInfo = (deadline: string | undefined) => {
@@ -181,70 +204,88 @@ export default function TasksPage() {
     const days = differenceInDays(deadlineDate, new Date());
     
     if (isPast(deadlineDate) && !isToday(deadlineDate)) {
-      return { text: `已逾期 ${Math.abs(days)} 天`, color: 'text-red-500', urgent: true };
+      return { 
+        text: t('tasks.overdue', { days: Math.abs(days) }), 
+        color: 'text-red-500', 
+        urgent: true 
+      };
     }
     if (days === 0) {
-      return { text: '今天截止', color: 'text-orange-500', urgent: true };
+      return { 
+        text: t('tasks.today'), 
+        color: 'text-orange-500', 
+        urgent: true 
+      };
     }
     if (days <= 3) {
-      return { text: `${days} 天后截止`, color: 'text-orange-500', urgent: true };
+      return { 
+        text: t('tasks.daysLeft', { days }), 
+        color: 'text-orange-500', 
+        urgent: true 
+      };
     }
-    return { text: `${days} 天`, color: 'text-muted-foreground', urgent: false };
+    return { 
+      text: `${days} ${language === 'zh-CN' ? '天' : 'days'}`, 
+      color: 'text-muted-foreground', 
+      urgent: false 
+    };
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-muted-foreground">加载中...</div>
+        <div className="animate-pulse text-muted-foreground">{t('common.loading')}</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-in">
-      {/* 页面标题 */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">任务管理</h1>
-          <p className="text-muted-foreground mt-1">高效管理你的学习任务</p>
+          <h1 className="text-3xl font-bold">{t('tasks.title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('tasks.subtitle')}</p>
         </div>
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogTrigger asChild>
             <Button className="gradient-bg">
               <Plus className="w-4 h-4 mr-2" />
-              添加任务
+              {t('tasks.addTask')}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>添加新任务</DialogTitle>
-              <DialogDescription>创建新的学习任务，开始你的学习之旅</DialogDescription>
+              <DialogTitle>{t('tasks.newTask')}</DialogTitle>
+              <DialogDescription>
+                {language === 'zh-CN' ? '创建新的学习任务，开始你的学习之旅' : 'Create a new study task to start your learning journey'}
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>任务名称 *</Label>
+                <Label>{t('tasks.taskName')} *</Label>
                 <Input
-                  placeholder="请输入任务名称"
+                  placeholder={language === 'zh-CN' ? '请输入任务名称' : 'Enter task name'}
                   value={newTask.title}
                   onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>分类</Label>
+                  <Label>{t('tasks.category')}</Label>
                   <Select value={newTask.category} onValueChange={(v) => setNewTask({ ...newTask, category: v })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {TASK_CATEGORIES.map((cat) => (
+                      {categories.map((cat) => (
                         <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>优先级</Label>
+                  <Label>{t('tasks.priority')}</Label>
                   <Select value={newTask.priority} onValueChange={(v) => setNewTask({ ...newTask, priority: v })}>
                     <SelectTrigger>
                       <SelectValue />
@@ -253,19 +294,19 @@ export default function TasksPage() {
                       <SelectItem value="high">
                         <span className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-red-500" />
-                          高优先级
+                          {t('priority.high')}
                         </span>
                       </SelectItem>
                       <SelectItem value="medium">
                         <span className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-yellow-500" />
-                          中优先级
+                          {t('priority.medium')}
                         </span>
                       </SelectItem>
                       <SelectItem value="low">
                         <span className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-green-500" />
-                          低优先级
+                          {t('priority.low')}
                         </span>
                       </SelectItem>
                     </SelectContent>
@@ -274,7 +315,7 @@ export default function TasksPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>截止日期</Label>
+                  <Label>{t('tasks.deadline')}</Label>
                   <Input
                     type="date"
                     value={newTask.deadline}
@@ -282,7 +323,7 @@ export default function TasksPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>预计时长（分钟）</Label>
+                  <Label>{t('tasks.estimatedTime')}</Label>
                   <Input
                     type="number"
                     placeholder="30"
@@ -294,14 +335,14 @@ export default function TasksPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowAddDialog(false)}>取消</Button>
-              <Button className="gradient-bg" onClick={handleAddTask}>创建任务</Button>
+              <Button variant="outline" onClick={() => setShowAddDialog(false)}>{t('common.cancel')}</Button>
+              <Button className="gradient-bg" onClick={handleAddTask}>{t('tasks.createTask')}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* 统计卡片 */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="card-hover">
           <CardContent className="pt-4">
@@ -311,7 +352,7 @@ export default function TasksPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.total}</p>
-                <p className="text-xs text-muted-foreground">总任务</p>
+                <p className="text-xs text-muted-foreground">{t('tasks.total')}</p>
               </div>
             </div>
           </CardContent>
@@ -324,7 +365,7 @@ export default function TasksPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.pending}</p>
-                <p className="text-xs text-muted-foreground">待开始</p>
+                <p className="text-xs text-muted-foreground">{t('tasks.pending')}</p>
               </div>
             </div>
           </CardContent>
@@ -337,7 +378,7 @@ export default function TasksPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.inProgress}</p>
-                <p className="text-xs text-muted-foreground">进行中</p>
+                <p className="text-xs text-muted-foreground">{t('tasks.inProgress')}</p>
               </div>
             </div>
           </CardContent>
@@ -350,7 +391,7 @@ export default function TasksPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.completed}</p>
-                <p className="text-xs text-muted-foreground">已完成</p>
+                <p className="text-xs text-muted-foreground">{t('tasks.completed')}</p>
               </div>
             </div>
           </CardContent>
@@ -363,19 +404,19 @@ export default function TasksPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.highPriority}</p>
-                <p className="text-xs text-muted-foreground">高优先级</p>
+                <p className="text-xs text-muted-foreground">{t('tasks.highPriority')}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* 进度条 */}
+      {/* Progress Bar */}
       {stats.total > 0 && (
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">今日进度</span>
+              <span className="text-sm font-medium">{t('tasks.todayProgress')}</span>
               <span className="text-sm text-muted-foreground">{stats.completed}/{stats.total}</span>
             </div>
             <Progress value={(stats.completed / stats.total) * 100} className="h-2" />
@@ -383,29 +424,29 @@ export default function TasksPage() {
         </Card>
       )}
 
-      {/* 筛选和排序 */}
+      {/* Filter and Sort */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-muted-foreground" />
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-32">
-              <SelectValue placeholder="状态" />
+              <SelectValue placeholder={language === 'zh-CN' ? '状态' : 'Status'} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">全部状态</SelectItem>
-              <SelectItem value="pending">待办</SelectItem>
-              <SelectItem value="in_progress">进行中</SelectItem>
-              <SelectItem value="completed">已完成</SelectItem>
+              <SelectItem value="all">{t('tasks.allStatus')}</SelectItem>
+              <SelectItem value="pending">{t('status.pending')}</SelectItem>
+              <SelectItem value="in_progress">{t('status.inProgress')}</SelectItem>
+              <SelectItem value="completed">{t('status.completed')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <Select value={filterCategory} onValueChange={setFilterCategory}>
           <SelectTrigger className="w-32">
-            <SelectValue placeholder="分类" />
+            <SelectValue placeholder={language === 'zh-CN' ? '分类' : 'Category'} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">全部分类</SelectItem>
-            {TASK_CATEGORIES.map((cat) => (
+            <SelectItem value="all">{t('tasks.allCategory')}</SelectItem>
+            {categories.map((cat) => (
               <SelectItem key={cat} value={cat}>{cat}</SelectItem>
             ))}
           </SelectContent>
@@ -417,14 +458,14 @@ export default function TasksPage() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="priority">按优先级</SelectItem>
-              <SelectItem value="deadline">按截止日期</SelectItem>
+              <SelectItem value="priority">{t('tasks.byPriority')}</SelectItem>
+              <SelectItem value="deadline">{t('tasks.byDeadline')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
       </div>
 
-      {/* 任务列表 */}
+      {/* Task List */}
       <div className="space-y-3">
         {filteredTasks.length === 0 ? (
           <Card className="py-12">
@@ -432,14 +473,13 @@ export default function TasksPage() {
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                 <Sparkles className="w-8 h-8 text-muted-foreground" />
               </div>
-              <p className="text-lg font-medium">暂无任务</p>
-              <p className="text-sm text-muted-foreground mt-1">点击上方按钮添加你的第一个任务</p>
+              <p className="text-lg font-medium">{t('tasks.noTasks')}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('tasks.addFirst')}</p>
             </CardContent>
           </Card>
         ) : (
           filteredTasks.map((task) => {
             const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
-            const statusConfig = STATUS_CONFIG[task.status as keyof typeof STATUS_CONFIG];
             const deadlineInfo = getDeadlineInfo(task.deadline);
 
             return (
@@ -448,21 +488,21 @@ export default function TasksPage() {
                 className={`card-hover transition-all ${task.status === 'completed' ? 'opacity-60' : ''}`}
               >
                 <CardContent className="flex items-center gap-4 py-4">
-                  {/* 状态切换 */}
+                  {/* Status Toggle */}
                   <Checkbox
                     checked={task.status === 'completed'}
                     onCheckedChange={(checked) => handleStatusChange(task.id, checked ? 'completed' : 'pending')}
                     className="w-5 h-5"
                   />
 
-                  {/* 任务信息 */}
+                  {/* Task Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
                         {task.title}
                       </span>
-                      <Badge variant="outline" className={`${priorityConfig.textColor} border-current`}>
-                        {priorityConfig.label}
+                      <Badge variant="outline" className={`${priorityConfig?.textColor} border-current`}>
+                        {priorityConfig?.label}
                       </Badge>
                       <Badge variant="secondary">{task.category}</Badge>
                     </div>
@@ -476,20 +516,20 @@ export default function TasksPage() {
                       {task.estimated_time && (
                         <span className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
-                          {task.estimated_time} 分钟
+                          {t('tasks.minutes', { minutes: task.estimated_time })}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* 操作按钮 */}
+                  {/* Action Buttons */}
                   <div className="flex items-center gap-2">
                     {task.status !== 'completed' && task.status !== 'in_progress' && (
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleStatusChange(task.id, 'in_progress')}
-                        title="开始任务"
+                        title={language === 'zh-CN' ? '开始任务' : 'Start Task'}
                       >
                         <PlayCircle className="w-4 h-4 text-cyan-500" />
                       </Button>
@@ -501,7 +541,7 @@ export default function TasksPage() {
                         setEditingTask(task);
                         setShowEditDialog(true);
                       }}
-                      title="编辑"
+                      title={t('common.edit')}
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
@@ -509,7 +549,7 @@ export default function TasksPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDeleteTask(task.id)}
-                      title="删除"
+                      title={t('common.delete')}
                       className="hover:text-destructive"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -522,27 +562,27 @@ export default function TasksPage() {
         )}
       </div>
 
-      {/* 清空已完成按钮 */}
+      {/* Clear Completed Button */}
       {stats.completed > 0 && (
         <div className="flex justify-center">
           <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
             <AlertDialogTrigger asChild>
               <Button variant="outline" className="text-muted-foreground">
                 <Trash2 className="w-4 h-4 mr-2" />
-                清空已完成任务
+                {t('tasks.clearCompleted')}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>确认清空</AlertDialogTitle>
+                <AlertDialogTitle>{t('tasks.confirmClear')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  确定要清空所有已完成的任务吗？清空后可在回收站恢复。
+                  {t('tasks.confirmClearDesc')}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>取消</AlertDialogCancel>
+                <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                 <AlertDialogAction onClick={handleClearCompleted} className="bg-destructive">
-                  清空
+                  {t('common.delete')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -550,16 +590,16 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* 编辑任务对话框 */}
+      {/* Edit Task Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>编辑任务</DialogTitle>
+            <DialogTitle>{t('tasks.editTask')}</DialogTitle>
           </DialogHeader>
           {editingTask && (
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>任务名称 *</Label>
+                <Label>{t('tasks.taskName')} *</Label>
                 <Input
                   value={editingTask.title}
                   onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
@@ -567,35 +607,35 @@ export default function TasksPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>分类</Label>
+                  <Label>{t('tasks.category')}</Label>
                   <Select value={editingTask.category} onValueChange={(v) => setEditingTask({ ...editingTask, category: v })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {TASK_CATEGORIES.map((cat) => (
+                      {categories.map((cat) => (
                         <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>优先级</Label>
+                  <Label>{t('tasks.priority')}</Label>
                   <Select value={editingTask.priority} onValueChange={(v) => setEditingTask({ ...editingTask, priority: v })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="high">高优先级</SelectItem>
-                      <SelectItem value="medium">中优先级</SelectItem>
-                      <SelectItem value="low">低优先级</SelectItem>
+                      <SelectItem value="high">{t('priority.high')}</SelectItem>
+                      <SelectItem value="medium">{t('priority.medium')}</SelectItem>
+                      <SelectItem value="low">{t('priority.low')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>截止日期</Label>
+                  <Label>{t('tasks.deadline')}</Label>
                   <Input
                     type="date"
                     value={editingTask.deadline || ''}
@@ -603,7 +643,7 @@ export default function TasksPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>预计时长（分钟）</Label>
+                  <Label>{t('tasks.estimatedTime')}</Label>
                   <Input
                     type="number"
                     min="1"
@@ -615,8 +655,8 @@ export default function TasksPage() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>取消</Button>
-            <Button className="gradient-bg" onClick={handleUpdateTask}>保存</Button>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>{t('common.cancel')}</Button>
+            <Button className="gradient-bg" onClick={handleUpdateTask}>{t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

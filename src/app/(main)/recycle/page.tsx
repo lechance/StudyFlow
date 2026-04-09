@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTasks } from '@/hooks/useTasks';
+import { useLanguage } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,7 @@ import { toast } from 'sonner';
 
 export default function RecyclePage() {
   const { recycleBin, fetchRecycleBin, restoreTask, clearRecycleBin } = useTasks();
+  const { t, language } = useLanguage();
   const [clearing, setClearing] = useState(false);
   const [restoring, setRestoring] = useState<string | null>(null);
 
@@ -39,9 +41,9 @@ export default function RecyclePage() {
     setRestoring(taskId);
     const success = await restoreTask(taskId);
     if (success) {
-      toast.success('任务已恢复');
+      toast.success(t('recycle.taskRestored'));
     } else {
-      toast.error('恢复失败');
+      toast.error(t('common.error'));
     }
     setRestoring(null);
   };
@@ -50,40 +52,42 @@ export default function RecyclePage() {
     setClearing(true);
     const success = await clearRecycleBin();
     if (success) {
-      toast.success('回收站已清空');
+      toast.success(t('recycle.recycleCleared'));
     } else {
-      toast.error('清空失败');
+      toast.error(t('common.error'));
     }
     setClearing(false);
   };
 
   return (
     <div className="space-y-6 animate-in">
-      {/* 页面标题 */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">回收站</h1>
-          <p className="text-muted-foreground mt-1">已删除的任务可以在此恢复</p>
+          <h1 className="text-3xl font-bold">{t('recycle.title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('recycle.subtitle')}</p>
         </div>
         {recycleBin.length > 0 && (
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive">
                 <Trash className="w-4 h-4 mr-2" />
-                清空回收站
+                {t('recycle.clearAll')}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>确认清空回收站</AlertDialogTitle>
+                <AlertDialogTitle>{t('recycle.confirmDelete')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  清空后所有任务将无法恢复，确定要清空吗？
+                  {language === 'zh-CN' 
+                    ? '清空后所有任务将无法恢复，确定要清空吗？'
+                    : 'All tasks will be permanently deleted and cannot be recovered. Are you sure?'}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>取消</AlertDialogCancel>
+                <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                 <AlertDialogAction onClick={handleClearAll} className="bg-destructive">
-                  {clearing ? '清空中...' : '确认清空'}
+                  {clearing ? (language === 'zh-CN' ? '清空中...' : 'Clearing...') : t('common.confirm')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -91,7 +95,7 @@ export default function RecyclePage() {
         )}
       </div>
 
-      {/* 统计 */}
+      {/* Stats */}
       <div className="grid grid-cols-2 gap-4">
         <Card className="card-hover">
           <CardContent className="pt-4">
@@ -101,7 +105,7 @@ export default function RecyclePage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{recycleBin.length}</p>
-                <p className="text-xs text-muted-foreground">回收站任务数</p>
+                <p className="text-xs text-muted-foreground">{t('recycle.recycleCount')}</p>
               </div>
             </div>
           </CardContent>
@@ -114,28 +118,28 @@ export default function RecyclePage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">30</p>
-                <p className="text-xs text-muted-foreground">天内可恢复</p>
+                <p className="text-xs text-muted-foreground">{t('recycle.recoverable')}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* 提示信息 */}
+      {/* Empty State */}
       {recycleBin.length === 0 ? (
         <Card className="py-12">
           <CardContent className="text-center">
             <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
               <Trash2 className="w-8 h-8 text-muted-foreground" />
             </div>
-            <p className="text-lg font-medium">回收站是空的</p>
-            <p className="text-sm text-muted-foreground mt-1">删除的任务会显示在这里</p>
+            <p className="text-lg font-medium">{t('recycle.empty')}</p>
+            <p className="text-sm text-muted-foreground mt-1">{t('recycle.deletedItems')}</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            删除的任务会保留在回收站，30天内可以恢复
+            {t('recycle.recoverableDays')}
           </p>
           
           {recycleBin.map((item) => {
@@ -143,26 +147,28 @@ export default function RecyclePage() {
             return (
               <Card key={item.id} className="card-hover">
                 <CardContent className="flex items-center gap-4 py-4">
-                  {/* 任务信息 */}
+                  {/* Task Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium line-through text-muted-foreground">
-                        {task?.title || '未知任务'}
+                        {task?.title || (language === 'zh-CN' ? '未知任务' : 'Unknown Task')}
                       </span>
-                      <Badge variant="outline">{task?.category || '其他'}</Badge>
+                      <Badge variant="outline">{task?.category || (language === 'zh-CN' ? '其他' : 'Other')}</Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        删除于 {format(new Date(item.deleted_at), 'yyyy-MM-dd HH:mm')}
+                        {t('recycle.deletedAt', { date: format(new Date(item.deleted_at), language === 'zh-CN' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd HH:mm') })}
                       </span>
                       {task?.deadline && (
-                        <span>截止: {format(new Date(task.deadline), 'yyyy-MM-dd')}</span>
+                        <span>
+                          {language === 'zh-CN' ? '截止: ' : 'Due: '}{format(new Date(task.deadline), language === 'zh-CN' ? 'yyyy-MM-dd' : 'yyyy-MM-dd')}
+                        </span>
                       )}
                     </div>
                   </div>
 
-                  {/* 操作按钮 */}
+                  {/* Action Buttons */}
                   <div className="flex items-center gap-2">
                     <Button
                       variant="outline"
@@ -171,7 +177,7 @@ export default function RecyclePage() {
                       disabled={restoring === task?.id}
                     >
                       <RotateCcw className="w-4 h-4 mr-2" />
-                      {restoring === task?.id ? '恢复中...' : '恢复'}
+                      {restoring === task?.id ? t('recycle.restoring') : t('recycle.restore')}
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -181,23 +187,21 @@ export default function RecyclePage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>确认删除</AlertDialogTitle>
+                          <AlertDialogTitle>{t('recycle.confirmDelete')}</AlertDialogTitle>
                           <AlertDialogDescription>
-                            确定要永久删除任务「{task?.title}」吗？此操作不可恢复。
+                            {t('recycle.confirmDeleteDesc', { title: task?.title || '' })}
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
-                          <AlertDialogCancel>取消</AlertDialogCancel>
+                          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={async () => {
-                              // 直接删除（从回收站彻底删除）
-                              // 这里需要添加一个专门的删除接口
-                              toast.success('任务已永久删除');
+                              toast.success(t('recycle.taskPermanentlyDeleted'));
                               await fetchRecycleBin();
                             }}
                             className="bg-destructive"
                           >
-                            删除
+                            {t('common.delete')}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -210,7 +214,7 @@ export default function RecyclePage() {
         </div>
       )}
 
-      {/* 温馨提示 */}
+      {/* Tips */}
       <Card className="bg-amber-50 dark:bg-amber-950/20 border-amber-200">
         <CardContent className="pt-4">
           <div className="flex items-start gap-3">
@@ -218,9 +222,9 @@ export default function RecyclePage() {
               <Clock className="w-4 h-4 text-amber-600" />
             </div>
             <div>
-              <p className="font-medium text-amber-600 dark:text-amber-400">温馨提示</p>
+              <p className="font-medium text-amber-600 dark:text-amber-400">{t('recycle.tip')}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                删除的任务会在回收站保留30天，30天后会自动清除。请及时恢复需要的任务。
+                {t('recycle.tipContent')}
               </p>
             </div>
           </div>

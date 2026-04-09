@@ -1,14 +1,14 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/hooks/useAuth';
+import { LanguageProvider } from '@/lib/i18n';
 import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'StudyFlow - 智能学习助手',
+    default: 'StudyFlow - Smart Study Assistant',
     template: '%s | StudyFlow',
   },
-  description: '一款面向学生和职场人的智能学习计划与时间管理应用，助你高效学习、持续进步。',
-  keywords: ['学习计划', '时间管理', '番茄钟', '任务管理', '学习助手'],
+  description: 'An intelligent learning plan and time management application for students and professionals.',
   authors: [{ name: 'StudyFlow Team' }],
   icons: {
     icon: '/favicon.ico',
@@ -21,9 +21,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
+    <html lang="zh-CN" suppressHydrationWarning>
       <body className="antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <LanguageProvider>{children}</LanguageProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTasks } from '@/hooks/useTasks';
+import { useLanguage } from '@/lib/i18n';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ import {
 export default function DashboardPage() {
   const { user, refreshUser } = useAuth();
   const { tasks, loading: tasksLoading } = useTasks();
+  const { t, language } = useLanguage();
   const [stats, setStats] = useState<any>(null);
   const [todayCheckIn, setTodayCheckIn] = useState(false);
 
@@ -49,7 +51,7 @@ export default function DashboardPage() {
     }
   };
 
-  // 计算统计数据
+  // Calculate stats
   const pendingTasks = tasks.filter(t => t.status !== 'completed').length;
   const completedToday = tasks.filter(t => 
     t.status === 'completed' && 
@@ -58,30 +60,28 @@ export default function DashboardPage() {
   ).length;
   const highPriorityTasks = tasks.filter(t => t.priority === 'high' && t.status !== 'completed').length;
 
-  // 今日计划进度
+  // Today's plan progress
   const todayProgress = stats?.today?.planned_tasks > 0 
     ? Math.round((stats?.today?.completed_tasks / stats?.today?.planned_tasks) * 100)
     : 0;
 
   return (
     <div className="space-y-6 animate-in">
-      {/* 欢迎横幅 */}
+      {/* Welcome Banner */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 p-6 text-white">
         <div className="relative z-10">
           <h1 className="text-2xl md:text-3xl font-bold mb-2">
-            你好，{user?.username}！👋
+            {t('dashboard.greeting', { username: user?.username || '' })}
           </h1>
           <p className="text-white/80">
-            {todayCheckIn 
-              ? '今日已打卡，继续保持！' 
-              : '今天也要加油学习哦！'}
+            {todayCheckIn ? t('dashboard.checkedIn') : t('dashboard.keepGoing')}
           </p>
         </div>
         <div className="absolute right-0 top-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/3" />
         <div className="absolute right-20 bottom-0 w-32 h-32 bg-white/10 rounded-full translate-y-1/2" />
       </div>
 
-      {/* 快速统计 */}
+      {/* Quick Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="card-hover">
           <CardContent className="pt-4">
@@ -91,7 +91,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{user?.streak_days || 0}</p>
-                <p className="text-xs text-muted-foreground">连续打卡</p>
+                <p className="text-xs text-muted-foreground">{t('dashboard.streakDays')}</p>
               </div>
             </div>
           </CardContent>
@@ -105,7 +105,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{Math.floor((user?.total_study_time || 0) / 60)}</p>
-                <p className="text-xs text-muted-foreground">总学习(小时)</p>
+                <p className="text-xs text-muted-foreground">{t('dashboard.totalHours')}</p>
               </div>
             </div>
           </CardContent>
@@ -119,7 +119,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{pendingTasks}</p>
-                <p className="text-xs text-muted-foreground">待办任务</p>
+                <p className="text-xs text-muted-foreground">{t('dashboard.pendingTasks')}</p>
               </div>
             </div>
           </CardContent>
@@ -133,30 +133,32 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{completedToday}</p>
-                <p className="text-xs text-muted-foreground">今日完成</p>
+                <p className="text-xs text-muted-foreground">{t('dashboard.completedToday')}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* 今日概览 */}
+      {/* Today's Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 今日计划进度 */}
+        {/* Today's Plan Progress */}
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Calendar className="w-5 h-5" />
-              今日计划
+              {t('dashboard.todayPlan')}
               <Badge variant="outline" className="ml-auto">
-                {format(new Date(), 'MM月dd日')}
+                {language === 'zh-CN' 
+                  ? format(new Date(), 'MM月dd日')
+                  : format(new Date(), 'MMM dd')}
               </Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">今日完成度</span>
+                <span className="text-sm font-medium">{t('dashboard.progress')}</span>
                 <span className="text-sm text-muted-foreground">{todayProgress}%</span>
               </div>
               <Progress value={todayProgress} className="h-3" />
@@ -164,15 +166,15 @@ export default function DashboardPage() {
               <div className="grid grid-cols-3 gap-4 mt-4">
                 <div className="text-center p-3 rounded-lg bg-muted/50">
                   <p className="text-2xl font-bold text-emerald-500">{stats?.today?.total_study_time || 0}m</p>
-                  <p className="text-xs text-muted-foreground">学习时长</p>
+                  <p className="text-xs text-muted-foreground">{t('dashboard.studyTime')}</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted/50">
                   <p className="text-2xl font-bold text-cyan-500">{stats?.today?.completed_tasks || 0}</p>
-                  <p className="text-xs text-muted-foreground">完成任务</p>
+                  <p className="text-xs text-muted-foreground">{t('dashboard.tasks')}</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-muted/50">
                   <p className="text-2xl font-bold text-blue-500">{highPriorityTasks}</p>
-                  <p className="text-xs text-muted-foreground">高优先级</p>
+                  <p className="text-xs text-muted-foreground">{t('dashboard.highPriority')}</p>
                 </div>
               </div>
 
@@ -180,13 +182,13 @@ export default function DashboardPage() {
                 <Link href="/tasks" className="flex-1">
                   <Button variant="outline" className="w-full">
                     <BookOpen className="w-4 h-4 mr-2" />
-                    查看任务
+                    {t('dashboard.viewTasks')}
                   </Button>
                 </Link>
                 <Link href="/plans" className="flex-1">
                   <Button className="gradient-bg w-full">
                     <Calendar className="w-4 h-4 mr-2" />
-                    制定计划
+                    {t('dashboard.makePlan')}
                   </Button>
                 </Link>
               </div>
@@ -194,37 +196,37 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* 快捷入口 */}
+        {/* Quick Access */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">快捷入口</CardTitle>
+            <CardTitle className="text-lg">{t('dashboard.quickAccess')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <Link href="/pomodoro">
               <Button variant="outline" className="w-full justify-start">
                 <Timer className="w-5 h-5 mr-3 text-emerald-500" />
-                开启番茄钟
+                {t('dashboard.startPomodoro')}
                 <ArrowRight className="w-4 h-4 ml-auto" />
               </Button>
             </Link>
             <Link href="/tasks">
               <Button variant="outline" className="w-full justify-start">
                 <Plus className="w-5 h-5 mr-3 text-cyan-500" />
-                添加新任务
+                {t('dashboard.addTask')}
                 <ArrowRight className="w-4 h-4 ml-auto" />
               </Button>
             </Link>
             <Link href="/stats">
               <Button variant="outline" className="w-full justify-start">
                 <TrendingUp className="w-5 h-5 mr-3 text-blue-500" />
-                查看统计
+                {t('dashboard.viewStats')}
                 <ArrowRight className="w-4 h-4 ml-auto" />
               </Button>
             </Link>
             <Link href="/plans">
               <Button variant="outline" className="w-full justify-start">
                 <CheckCircle className="w-5 h-5 mr-3 text-amber-500" />
-                今日打卡
+                {t('dashboard.checkIn')}
                 <ArrowRight className="w-4 h-4 ml-auto" />
               </Button>
             </Link>
@@ -232,33 +234,33 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* 待办任务预览 */}
+      {/* Pending Tasks Preview */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
-            待办任务
+            {t('dashboard.pendingTasksTitle')}
             {pendingTasks > 0 && (
               <Badge variant="secondary">{pendingTasks}</Badge>
             )}
           </CardTitle>
           <Link href="/tasks">
             <Button variant="ghost" size="sm">
-              查看全部
+              {t('dashboard.viewAll')}
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </Link>
         </CardHeader>
         <CardContent>
           {tasksLoading ? (
-            <div className="text-center py-8 text-muted-foreground">加载中...</div>
+            <div className="text-center py-8 text-muted-foreground">{t('common.loading')}</div>
           ) : tasks.filter(t => t.status !== 'completed').length === 0 ? (
             <div className="text-center py-8">
               <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
                 <CheckCircle className="w-8 h-8 text-muted-foreground" />
               </div>
-              <p className="font-medium">太棒了！</p>
-              <p className="text-sm text-muted-foreground">所有任务都已完成</p>
+              <p className="font-medium">{t('dashboard.noTasks')}</p>
+              <p className="text-sm text-muted-foreground">{t('dashboard.allCompleted')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -274,13 +276,13 @@ export default function DashboardPage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{task.title}</p>
                     <p className="text-sm text-muted-foreground">
-                      {task.category} · {task.deadline ? `截止 ${format(new Date(task.deadline), 'MM/dd')}` : '无截止日期'}
+                      {t(`category.${task.category}`)} · {task.deadline ? `${language === 'zh-CN' ? '截止 ' : 'Due '}${format(new Date(task.deadline), language === 'zh-CN' ? 'MM/dd' : 'MM/dd')}` : (language === 'zh-CN' ? '无截止日期' : 'No deadline')}
                     </p>
                   </div>
                   <Badge variant="outline" className={
                     task.status === 'in_progress' ? 'bg-cyan-500/10 text-cyan-600' : ''
                   }>
-                    {task.status === 'in_progress' ? '进行中' : '待办'}
+                    {task.status === 'in_progress' ? t('status.inProgress') : t('status.pending')}
                   </Badge>
                 </div>
               ))}
@@ -289,7 +291,7 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* 学习提示 */}
+      {/* Study Tip */}
       <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
         <CardContent className="pt-6">
           <div className="flex items-start gap-4">
@@ -297,15 +299,15 @@ export default function DashboardPage() {
               <Sparkles className="w-6 h-6 text-blue-500" />
             </div>
             <div>
-              <p className="font-medium text-blue-600 dark:text-blue-400">今日学习建议</p>
+              <p className="font-medium text-blue-600 dark:text-blue-400">{t('dashboard.todayTip')}</p>
               <p className="text-sm text-muted-foreground mt-1">
-                建议先处理高优先级任务，合理安排番茄钟时间。完成计划后记得打卡哦！
+                {t('dashboard.tipContent')}
               </p>
               <div className="flex gap-2 mt-3">
                 <Link href="/pomodoro">
                   <Button size="sm" className="gradient-bg">
                     <Timer className="w-4 h-4 mr-2" />
-                    开始专注
+                    {t('dashboard.startFocus')}
                   </Button>
                 </Link>
               </div>

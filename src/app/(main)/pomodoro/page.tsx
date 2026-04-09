@@ -2,17 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -48,6 +42,7 @@ const DEFAULT_SETTINGS: TimerSettings = {
 export default function PomodoroPage() {
   const { user, refreshUser } = useAuth();
   const { tasks } = useTasks();
+  const { t, language } = useLanguage();
   const [settings, setSettings] = useState<TimerSettings>(DEFAULT_SETTINGS);
   const [mode, setMode] = useState<TimerMode>('focus');
   const [timeLeft, setTimeLeft] = useState(DEFAULT_SETTINGS.focusDuration * 60);
@@ -62,7 +57,7 @@ export default function PomodoroPage() {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // 加载今日学习时长
+  // Load today's study time
   const loadTodayStats = useCallback(async () => {
     const today = format(new Date(), 'yyyy-MM-dd');
     const res = await studyApi.getRecords({ date: today });
@@ -72,7 +67,7 @@ export default function PomodoroPage() {
     }
   }, []);
 
-  // 播放提示音
+  // Play notification sound
   const playSound = () => {
     try {
       if (!audioContextRef.current) {
@@ -98,7 +93,7 @@ export default function PomodoroPage() {
     }
   };
 
-  // 计时器逻辑
+  // Timer logic
   useEffect(() => {
     if (isRunning && timeLeft > 0) {
       intervalRef.current = setInterval(() => {
@@ -112,12 +107,12 @@ export default function PomodoroPage() {
         const newSessions = sessions + 1;
         setSessions(newSessions);
         
-        // 记录学习时长
+        // Record study time
         const duration = settings.focusDuration;
         studyApi.addRecord(duration, selectedTaskId || undefined);
         setTodayStudyTime((prev) => prev + duration);
         
-        // 检查是否需要长休息
+        // Check if long break is needed
         if (newSessions % settings.sessionsBeforeLongBreak === 0) {
           setMode('longBreak');
           setTimeLeft(settings.longBreakDuration * 60);
@@ -128,11 +123,11 @@ export default function PomodoroPage() {
         
         setShowComplete(true);
         setTimeout(() => setShowComplete(false), 3000);
-        toast.success('太棒了！专注完成', {
-          description: mode === 'focus' ? `已学习 ${duration} 分钟` : undefined
+        toast.success(t('pomodoro.focusComplete'), {
+          description: `${t('pomodoro.focusing')} ${duration} ${language === 'zh-CN' ? '分钟' : 'min'}`
         });
       } else {
-        toast.success('休息结束', { description: '继续加油！' });
+        toast.success(t('pomodoro.breakEnd'), { description: t('pomodoro.keepGoing') });
         setMode('focus');
         setTimeLeft(settings.focusDuration * 60);
       }
@@ -143,14 +138,14 @@ export default function PomodoroPage() {
         clearInterval(intervalRef.current);
       }
     };
-  }, [isRunning, timeLeft, mode, sessions, settings, selectedTaskId]);
+  }, [isRunning, timeLeft, mode, sessions, settings, selectedTaskId, t, language]);
 
-  // 初始化
+  // Initialize
   useEffect(() => {
     loadTodayStats();
   }, [loadTodayStats]);
 
-  // 获取当前模式的时长
+  // Get mode duration
   const getModeDuration = (m: TimerMode) => {
     switch (m) {
       case 'focus': return settings.focusDuration * 60;
@@ -159,18 +154,18 @@ export default function PomodoroPage() {
     }
   };
 
-  // 开始/暂停
+  // Start/Pause
   const toggleTimer = () => {
     setIsRunning(!isRunning);
   };
 
-  // 重置
+  // Reset
   const resetTimer = () => {
     setIsRunning(false);
     setTimeLeft(getModeDuration(mode));
   };
 
-  // 切换模式
+  // Switch mode
   const switchMode = (newMode: TimerMode) => {
     setIsRunning(false);
     setMode(newMode);
@@ -181,7 +176,7 @@ export default function PomodoroPage() {
     }
   };
 
-  // 保存设置
+  // Save settings
   const saveSettings = (newSettings: TimerSettings) => {
     setSettings(newSettings);
     if (!isRunning) {
@@ -192,74 +187,75 @@ export default function PomodoroPage() {
       }
     }
     setShowSettings(false);
-    toast.success('设置已保存');
+    toast.success(t('pomodoro.settingsSaved'));
   };
 
-  // 格式化时间
+  // Format time
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // 计算进度
+  // Calculate progress
   const progress = ((getModeDuration(mode) - timeLeft) / getModeDuration(mode)) * 100;
 
-  // 模式配置
+  // Mode config
   const modeConfig = {
-    focus: { label: '专注', icon: Target, color: 'text-emerald-500', bgColor: 'bg-emerald-500' },
-    shortBreak: { label: '短休息', icon: Coffee, color: 'text-cyan-500', bgColor: 'bg-cyan-500' },
-    longBreak: { label: '长休息', icon: Coffee, color: 'text-blue-500', bgColor: 'bg-blue-500' },
+    focus: { label: t('pomodoro.focus'), icon: Target, color: 'text-emerald-500', bgColor: 'bg-emerald-500' },
+    shortBreak: { label: t('pomodoro.shortBreak'), icon: Coffee, color: 'text-cyan-500', bgColor: 'bg-cyan-500' },
+    longBreak: { label: t('pomodoro.longBreak'), icon: Coffee, color: 'text-blue-500', bgColor: 'bg-blue-500' },
   };
 
   const currentConfig = modeConfig[mode];
+  const selectedTask = tasks.find(t => t.id === selectedTaskId);
 
   return (
     <div className="space-y-6 animate-in">
-      {/* 页面标题 */}
+      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">番茄钟</h1>
-          <p className="text-muted-foreground mt-1">专注学习，高效进步</p>
+          <h1 className="text-3xl font-bold">{t('pomodoro.title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('pomodoro.subtitle')}</p>
         </div>
         <Button variant="outline" onClick={() => setShowSettings(true)}>
           <Settings className="w-4 h-4 mr-2" />
-          设置
+          {t('pomodoro.settings')}
         </Button>
       </div>
 
-      {/* 今日统计 */}
+      {/* Today's Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="card-hover">
           <CardContent className="pt-4 text-center">
             <p className="text-3xl font-bold text-emerald-500">{Math.floor(todayStudyTime / 60)}</p>
-            <p className="text-sm text-muted-foreground">今日学习(分钟)</p>
+            <p className="text-sm text-muted-foreground">{t('pomodoro.todayMinutes')}</p>
           </CardContent>
         </Card>
         <Card className="card-hover">
           <CardContent className="pt-4 text-center">
             <p className="text-3xl font-bold text-cyan-500">{sessions}</p>
-            <p className="text-sm text-muted-foreground">已完成专注</p>
+            <p className="text-sm text-muted-foreground">{t('pomodoro.completedFocus')}</p>
           </CardContent>
         </Card>
         <Card className="card-hover">
           <CardContent className="pt-4 text-center">
             <p className="text-3xl font-bold text-blue-500">{Math.floor((user?.total_study_time || 0) / 60)}</p>
-            <p className="text-sm text-muted-foreground">总学习(小时)</p>
+            <p className="text-sm text-muted-foreground">{t('pomodoro.totalHours')}</p>
           </CardContent>
         </Card>
         <Card className="card-hover">
           <CardContent className="pt-4 text-center">
             <p className="text-3xl font-bold text-amber-500">{user?.streak_days || 0}</p>
-            <p className="text-sm text-muted-foreground">连续打卡(天)</p>
+            <p className="text-sm text-muted-foreground">{t('pomodoro.streakDays')}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* 计时器主体 */}
+      {/* Timer Main */}
       <Card className="overflow-hidden">
         <CardContent className="pt-8 pb-8">
-          {/* 模式切换 */}
+          {/* Mode Toggle */}
           <div className="flex justify-center gap-2 mb-8">
             {(['focus', 'shortBreak', 'longBreak'] as TimerMode[]).map((m) => {
               const config = modeConfig[m];
@@ -278,10 +274,10 @@ export default function PomodoroPage() {
             })}
           </div>
 
-          {/* 圆形进度 */}
+          {/* Circular Progress */}
           <div className="relative flex justify-center mb-8">
             <div className="relative w-64 h-64">
-              {/* 背景圆环 */}
+              {/* Background Ring */}
               <svg className="absolute inset-0 w-full h-full -rotate-90">
                 <circle
                   cx="128"
@@ -308,19 +304,19 @@ export default function PomodoroPage() {
                 />
               </svg>
               
-              {/* 时间显示 */}
+              {/* Time Display */}
               <div className="absolute inset-0 flex flex-col items-center justify-center">
                 <span className="text-6xl font-bold tracking-wider">
                   {formatTime(timeLeft)}
                 </span>
                 <span className={`text-sm mt-2 ${currentConfig.color}`}>
-                  {currentConfig.label}中
+                  {isRunning ? t('pomodoro.focusing') : modeConfig[mode].label}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* 控制按钮 */}
+          {/* Control Buttons */}
           <div className="flex justify-center gap-4">
             <Button
               variant="outline"
@@ -351,31 +347,31 @@ export default function PomodoroPage() {
             </Button>
           </div>
 
-          {/* 选中的任务 */}
-          {selectedTaskId && (
+          {/* Selected Task */}
+          {selectedTask && (
             <div className="mt-6 text-center">
               <Badge variant="secondary" className="text-sm">
-                正在专注: {tasks.find(t => t.id === selectedTaskId)?.title || '未知任务'}
+                {t('pomodoro.focusingOn', { task: selectedTask.title })}
               </Badge>
             </div>
           )}
 
-          {/* 完成提示 */}
+          {/* Complete Notice */}
           {showComplete && (
             <div className="mt-6 text-center animate-in">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600">
                 <CheckCircle className="w-5 h-5" />
-                专注完成！
+                {t('pomodoro.focusComplete')}
               </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* 番茄钟说明 */}
+      {/* Pomodoro Explanation */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">番茄工作法</CardTitle>
+          <CardTitle className="text-lg">{t('pomodoro.pomodoroMethod')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -384,8 +380,8 @@ export default function PomodoroPage() {
                 <Target className="w-4 h-4 text-emerald-500" />
               </div>
               <div>
-                <p className="font-medium">专注工作</p>
-                <p className="text-muted-foreground">25分钟全神贯注完成任务</p>
+                <p className="font-medium">{t('pomodoro.focusWork')}</p>
+                <p className="text-muted-foreground">{t('pomodoro.focusDesc')}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -393,8 +389,8 @@ export default function PomodoroPage() {
                 <Coffee className="w-4 h-4 text-cyan-500" />
               </div>
               <div>
-                <p className="font-medium">短暂休息</p>
-                <p className="text-muted-foreground">5分钟放松身心，恢复精力</p>
+                <p className="font-medium">{t('pomodoro.shortRest')}</p>
+                <p className="text-muted-foreground">{t('pomodoro.shortRestDesc')}</p>
               </div>
             </div>
             <div className="flex items-start gap-3">
@@ -402,23 +398,25 @@ export default function PomodoroPage() {
                 <Timer className="w-4 h-4 text-blue-500" />
               </div>
               <div>
-                <p className="font-medium">循环往复</p>
-                <p className="text-muted-foreground">每4个番茄钟后长休息15分钟</p>
+                <p className="font-medium">{t('pomodoro.repeat')}</p>
+                <p className="text-muted-foreground">{t('pomodoro.repeatDesc')}</p>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* 设置对话框 */}
+      {/* Settings Dialog */}
       <SettingsDialog
         open={showSettings}
         onClose={() => setShowSettings(false)}
         settings={settings}
         onSave={saveSettings}
+        t={t}
+        language={language}
       />
 
-      {/* 任务选择对话框 */}
+      {/* Task Select Dialog */}
       <TaskSelectDialog
         open={showTaskSelect}
         onClose={() => setShowTaskSelect(false)}
@@ -428,22 +426,28 @@ export default function PomodoroPage() {
           setSelectedTaskId(taskId);
           setShowTaskSelect(false);
         }}
+        t={t}
+        language={language}
       />
     </div>
   );
 }
 
-// 设置对话框
+// Settings Dialog
 function SettingsDialog({
   open,
   onClose,
   settings,
   onSave,
+  t,
+  language,
 }: {
   open: boolean;
   onClose: () => void;
   settings: TimerSettings;
   onSave: (settings: TimerSettings) => void;
+  t: (key: string) => string;
+  language: string;
 }) {
   const [localSettings, setLocalSettings] = useState(settings);
 
@@ -455,12 +459,12 @@ function SettingsDialog({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>番茄钟设置</DialogTitle>
-          <DialogDescription>自定义专注时长和休息时间</DialogDescription>
+          <DialogTitle>{t('pomodoro.settingsTitle')}</DialogTitle>
+          <DialogDescription>{t('pomodoro.settingsDesc')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>专注时长（分钟）</Label>
+            <Label>{t('pomodoro.focusDuration')}</Label>
             <Input
               type="number"
               min="1"
@@ -470,7 +474,7 @@ function SettingsDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>短休息时长（分钟）</Label>
+            <Label>{t('pomodoro.shortBreakDuration')}</Label>
             <Input
               type="number"
               min="1"
@@ -480,7 +484,7 @@ function SettingsDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>长休息时长（分钟）</Label>
+            <Label>{t('pomodoro.longBreakDuration')}</Label>
             <Input
               type="number"
               min="1"
@@ -490,7 +494,7 @@ function SettingsDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>长休息间隔（个番茄钟）</Label>
+            <Label>{t('pomodoro.longBreakInterval')}</Label>
             <Input
               type="number"
               min="1"
@@ -501,34 +505,38 @@ function SettingsDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>取消</Button>
-          <Button className="gradient-bg" onClick={() => onSave(localSettings)}>保存</Button>
+          <Button variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button className="gradient-bg" onClick={() => onSave(localSettings)}>{t('common.save')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-// 任务选择对话框
+// Task Select Dialog
 function TaskSelectDialog({
   open,
   onClose,
   tasks,
   selectedTaskId,
   onSelect,
+  t,
+  language,
 }: {
   open: boolean;
   onClose: () => void;
   tasks: any[];
   selectedTaskId: string | null;
   onSelect: (taskId: string | null) => void;
+  t: (key: string) => string;
+  language: string;
 }) {
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>选择专注任务</DialogTitle>
-          <DialogDescription>选择一个任务来跟踪你的专注时间</DialogDescription>
+          <DialogTitle>{t('pomodoro.selectTask')}</DialogTitle>
+          <DialogDescription>{t('pomodoro.selectTaskDesc')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-2 py-4 max-h-64 overflow-y-auto">
           <Button
@@ -536,10 +544,10 @@ function TaskSelectDialog({
             className="w-full justify-start"
             onClick={() => onSelect(null)}
           >
-            不关联任务
+            {t('pomodoro.noTask')}
           </Button>
           {tasks.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">暂无待办任务</p>
+            <p className="text-center text-muted-foreground py-4">{t('pomodoro.noTasks')}</p>
           ) : (
             tasks.map((task) => (
               <Button

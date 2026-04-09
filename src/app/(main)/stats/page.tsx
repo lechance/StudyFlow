@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useLanguage } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,9 +9,9 @@ import { Progress } from '@/components/ui/progress';
 import { statsApi } from '@/lib/api';
 import { BarChart3, TrendingUp, Clock, Target, Flame, Calendar } from 'lucide-react';
 import { format, subDays, isToday } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
 
 export default function StatsPage() {
+  const { t, language } = useLanguage();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(7);
@@ -31,7 +32,7 @@ export default function StatsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-muted-foreground">加载中...</div>
+        <div className="animate-pulse text-muted-foreground">{t('common.loading')}</div>
       </div>
     );
   }
@@ -43,27 +44,27 @@ export default function StatsPage() {
     streakDays: 0
   };
 
-  // 计算本周总学习时长
+  // Calculate week total study time
   const weekTotalTime = dailyStats?.reduce((sum: number, day: any) => sum + day.total_study_time, 0) || 0;
   
-  // 计算本周完成任务数
+  // Calculate week completed tasks
   const weekCompletedTasks = dailyStats?.reduce((sum: number, day: any) => sum + day.completed_tasks, 0) || 0;
   
-  // 计算平均每日学习时长
+  // Calculate average daily study time
   const avgDailyTime = weekTotalTime / (days || 1);
   
-  // 计算今日完成率
+  // Calculate today's completion rate
   const todayProgress = today.planned_tasks > 0 
     ? Math.round((today.completed_tasks / today.planned_tasks) * 100) 
     : 0;
 
   return (
     <div className="space-y-6 animate-in">
-      {/* 页面标题 */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">数据统计</h1>
-          <p className="text-muted-foreground mt-1">回顾学习成果，激励持续进步</p>
+          <h1 className="text-3xl font-bold">{t('stats.title')}</h1>
+          <p className="text-muted-foreground mt-1">{t('stats.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -71,26 +72,26 @@ export default function StatsPage() {
             size="sm"
             onClick={() => setDays(7)}
           >
-            近7天
+            {t('stats.last7Days')}
           </Button>
           <Button
             variant={days === 14 ? 'default' : 'outline'}
             size="sm"
             onClick={() => setDays(14)}
           >
-            近14天
+            {t('stats.last14Days')}
           </Button>
           <Button
             variant={days === 30 ? 'default' : 'outline'}
             size="sm"
             onClick={() => setDays(30)}
           >
-            近30天
+            {t('stats.last30Days')}
           </Button>
         </div>
       </div>
 
-      {/* 核心统计卡片 */}
+      {/* Core Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="card-hover">
           <CardContent className="pt-4">
@@ -100,7 +101,7 @@ export default function StatsPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{Math.floor(weekTotalTime / 60)}h {weekTotalTime % 60}m</p>
-                <p className="text-xs text-muted-foreground">本周学习时长</p>
+                <p className="text-xs text-muted-foreground">{t('stats.weekStudyTime')}</p>
               </div>
             </div>
           </CardContent>
@@ -114,7 +115,7 @@ export default function StatsPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{weekCompletedTasks}</p>
-                <p className="text-xs text-muted-foreground">本周完成任务</p>
+                <p className="text-xs text-muted-foreground">{t('stats.weekCompletedTasks')}</p>
               </div>
             </div>
           </CardContent>
@@ -128,7 +129,7 @@ export default function StatsPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{Math.floor(avgDailyTime)}m</p>
-                <p className="text-xs text-muted-foreground">日均学习</p>
+                <p className="text-xs text-muted-foreground">{t('stats.dailyAverage')}</p>
               </div>
             </div>
           </CardContent>
@@ -142,44 +143,44 @@ export default function StatsPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">{streakDays}</p>
-                <p className="text-xs text-muted-foreground">连续打卡</p>
+                <p className="text-xs text-muted-foreground">{t('stats.streakDays')}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* 今日概览 */}
+      {/* Today's Overview */}
       <Card className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Calendar className="w-5 h-5" />
-            今日概览
-            {isToday(new Date()) && <Badge>今天</Badge>}
+            {t('stats.todayOverview')}
+            {isToday(new Date()) && <Badge>{t('stats.today')}</Badge>}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="text-center">
               <p className="text-3xl font-bold text-emerald-500">{today.total_study_time}m</p>
-              <p className="text-sm text-muted-foreground">学习时长</p>
+              <p className="text-sm text-muted-foreground">{t('stats.todayStudyTime')}</p>
             </div>
             <div className="text-center">
               <p className="text-3xl font-bold text-cyan-500">{today.completed_tasks}</p>
-              <p className="text-sm text-muted-foreground">完成任务</p>
+              <p className="text-sm text-muted-foreground">{t('stats.tasksCompleted2')}</p>
             </div>
             <div className="text-center">
               <p className="text-3xl font-bold text-blue-500">{today.pending_tasks}</p>
-              <p className="text-sm text-muted-foreground">待办任务</p>
+              <p className="text-sm text-muted-foreground">{t('stats.pendingTasks')}</p>
             </div>
             <div className="text-center">
               <p className="text-3xl font-bold text-amber-500">{todayProgress}%</p>
-              <p className="text-sm text-muted-foreground">完成率</p>
+              <p className="text-sm text-muted-foreground">{t('stats.completionRate')}</p>
             </div>
           </div>
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">今日计划完成度</span>
+              <span className="text-sm font-medium">{t('stats.todayOverview')}</span>
               <span className="text-sm text-muted-foreground">{todayProgress}%</span>
             </div>
             <Progress value={todayProgress} className="h-3" />
@@ -187,12 +188,12 @@ export default function StatsPage() {
         </CardContent>
       </Card>
 
-      {/* 每日学习趋势 */}
+      {/* Daily Study Trend */}
       <Card>
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <BarChart3 className="w-5 h-5" />
-            学习趋势
+            {t('stats.studyTrend')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -205,7 +206,7 @@ export default function StatsPage() {
               return (
                 <div key={index} className="flex items-center gap-4">
                   <div className="w-20 text-sm text-muted-foreground">
-                    {isTodayDate ? '今天' : format(new Date(day.date), 'MM/dd', { locale: zhCN })}
+                    {isTodayDate ? t('stats.today') : format(new Date(day.date), language === 'zh-CN' ? 'MM/dd' : 'MM/dd')}
                   </div>
                   <div className="flex-1">
                     <div className="h-8 bg-muted rounded-lg overflow-hidden relative">
@@ -226,7 +227,7 @@ export default function StatsPage() {
                   </div>
                   <div className="w-20 text-right">
                     <Badge variant={day.completed_tasks > 0 ? 'default' : 'outline'}>
-                      {day.completed_tasks} 任务
+                      {t('stats.tasksCompleted', { count: day.completed_tasks })}
                     </Badge>
                   </div>
                 </div>
@@ -236,17 +237,17 @@ export default function StatsPage() {
         </CardContent>
       </Card>
 
-      {/* 学习统计详情 */}
+      {/* Study Stats Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* 学习时长分布 */}
+        {/* Study Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">学习时长分布</CardTitle>
+            <CardTitle className="text-lg">{t('stats.studyDistribution')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {dailyStats?.filter((day: any) => day.total_study_time > 0).length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">暂无学习记录</p>
+                <p className="text-center text-muted-foreground py-8">{t('stats.noRecords')}</p>
               ) : (
                 dailyStats?.filter((day: any) => day.total_study_time > 0).map((day: any, index: number) => (
                   <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
@@ -256,17 +257,19 @@ export default function StatsPage() {
                       </div>
                       <div>
                         <p className="font-medium">
-                          {isToday(new Date(day.date)) ? '今天' : format(new Date(day.date), 'MM月dd日', { locale: zhCN })}
+                          {isToday(new Date(day.date)) ? t('stats.today') : format(new Date(day.date), language === 'zh-CN' ? 'MM月dd日' : 'MMM d')}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          完成 {day.completed_tasks} 个任务
+                          {language === 'zh-CN' 
+                            ? `完成 ${day.completed_tasks} 个任务` 
+                            : `${day.completed_tasks} tasks completed`}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold text-emerald-500">{day.total_study_time}m</p>
                       <p className="text-xs text-muted-foreground">
-                        {Math.floor(day.total_study_time / 60)}h {day.total_study_time % 60}m
+                        {Math.floor(day.total_study_time / 60)}{language === 'zh-CN' ? 'h' : 'h'} {day.total_study_time % 60}m
                       </p>
                     </div>
                   </div>
@@ -276,10 +279,10 @@ export default function StatsPage() {
           </CardContent>
         </Card>
 
-        {/* 成就统计 */}
+        {/* Achievement Stats */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">学习成就</CardTitle>
+            <CardTitle className="text-lg">{t('stats.achievements')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4">
@@ -288,28 +291,28 @@ export default function StatsPage() {
                   <Flame className="w-6 h-6 text-amber-600" />
                 </div>
                 <p className="text-2xl font-bold">{streakDays}</p>
-                <p className="text-sm text-muted-foreground">连续打卡天数</p>
+                <p className="text-sm text-muted-foreground">{t('stats.streakDays')}</p>
               </div>
               <div className="p-4 rounded-lg bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 text-center">
                 <div className="w-12 h-12 rounded-full bg-emerald-500/30 mx-auto mb-2 flex items-center justify-center">
                   <Clock className="w-6 h-6 text-emerald-600" />
                 </div>
                 <p className="text-2xl font-bold">{Math.floor((totalStudyTime || 0) / 60)}</p>
-                <p className="text-sm text-muted-foreground">总学习小时</p>
+                <p className="text-sm text-muted-foreground">{t('dashboard.totalHours')}</p>
               </div>
               <div className="p-4 rounded-lg bg-gradient-to-br from-blue-500/20 to-indigo-500/20 text-center">
                 <div className="w-12 h-12 rounded-full bg-blue-500/30 mx-auto mb-2 flex items-center justify-center">
                   <Target className="w-6 h-6 text-blue-600" />
                 </div>
                 <p className="text-2xl font-bold">{weekCompletedTasks}</p>
-                <p className="text-sm text-muted-foreground">本周完成任务</p>
+                <p className="text-sm text-muted-foreground">{t('stats.weekCompletedTasks')}</p>
               </div>
               <div className="p-4 rounded-lg bg-gradient-to-br from-purple-500/20 to-pink-500/20 text-center">
                 <div className="w-12 h-12 rounded-full bg-purple-500/30 mx-auto mb-2 flex items-center justify-center">
                   <TrendingUp className="w-6 h-6 text-purple-600" />
                 </div>
                 <p className="text-2xl font-bold">{Math.floor(avgDailyTime)}</p>
-                <p className="text-sm text-muted-foreground">日均分钟</p>
+                <p className="text-sm text-muted-foreground">{t('stats.dailyAverage')}</p>
               </div>
             </div>
           </CardContent>

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
+import { useLanguage } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,14 +12,20 @@ import { BookOpen, GraduationCap, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const { login, register } = useAuth();
+  const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  // 登录表单
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Login form
   const [loginUsername, setLoginUsername] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   
-  // 注册表单
+  // Register form
   const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regEmail, setRegEmail] = useState('');
@@ -30,7 +37,7 @@ export default function LoginPage() {
     
     const result = await login(loginUsername, loginPassword);
     if (!result.success) {
-      setError(result.error || '登录失败');
+      setError(t('auth.invalidCredentials'));
     }
     
     setLoading(false);
@@ -42,28 +49,32 @@ export default function LoginPage() {
     setError('');
     
     if (!regUsername || !regPassword) {
-      setError('请填写所有必填项');
+      setError(t('auth.usernameRequired'));
       setLoading(false);
       return;
     }
     
     if (regPassword.length < 6) {
-      setError('密码至少6位');
+      setError(t('auth.passwordMinLength'));
       setLoading(false);
       return;
     }
     
     const result = await register(regUsername, regPassword, regEmail || undefined);
     if (!result.success) {
-      setError(result.error || '注册失败');
+      setError(result.error || t('common.error'));
     }
     
     setLoading(false);
   };
 
+  if (!mounted) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-emerald-50 via-cyan-50 to-blue-50">
-      {/* 背景装饰 */}
+      {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-emerald-200/30 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-cyan-200/30 blur-3xl" />
@@ -78,21 +89,23 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
             StudyFlow
           </h1>
-          <p className="text-muted-foreground mt-2">智能学习助手，让进步看得见</p>
+          <p className="text-muted-foreground mt-2">
+            {language === 'zh-CN' ? '智能学习助手，让进步看得见' : 'Smart Study Assistant, Track Your Progress'}
+          </p>
         </div>
 
         <Card className="shadow-xl border-0 glass">
           <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="login">登录</TabsTrigger>
-              <TabsTrigger value="register">注册</TabsTrigger>
+              <TabsTrigger value="login">{t('auth.login')}</TabsTrigger>
+              <TabsTrigger value="register">{t('auth.register')}</TabsTrigger>
             </TabsList>
             
             <TabsContent value="login">
               <form onSubmit={handleLogin}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-xl">欢迎回来</CardTitle>
-                  <CardDescription>登录你的学习账号</CardDescription>
+                  <CardTitle className="text-xl">{t('auth.welcomeBack')}</CardTitle>
+                  <CardDescription>{t('auth.loginAccount')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {error && (
@@ -101,21 +114,21 @@ export default function LoginPage() {
                     </div>
                   )}
                   <div className="space-y-2">
-                    <Label htmlFor="login-username">用户名</Label>
+                    <Label htmlFor="login-username">{t('auth.username')}</Label>
                     <Input
                       id="login-username"
-                      placeholder="请输入用户名"
+                      placeholder={language === 'zh-CN' ? '请输入用户名' : 'Enter username'}
                       value={loginUsername}
                       onChange={(e) => setLoginUsername(e.target.value)}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="login-password">密码</Label>
+                    <Label htmlFor="login-password">{t('auth.password')}</Label>
                     <Input
                       id="login-password"
                       type="password"
-                      placeholder="请输入密码"
+                      placeholder={language === 'zh-CN' ? '请输入密码' : 'Enter password'}
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       required
@@ -127,12 +140,12 @@ export default function LoginPage() {
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        登录中...
+                        {t('common.loading')}
                       </>
                     ) : (
                       <>
                         <BookOpen className="mr-2 h-4 w-4" />
-                        登录
+                        {t('auth.login')}
                       </>
                     )}
                   </Button>
@@ -143,8 +156,8 @@ export default function LoginPage() {
             <TabsContent value="register">
               <form onSubmit={handleRegister}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-xl">创建账号</CardTitle>
-                  <CardDescription>开始你的学习之旅</CardDescription>
+                  <CardTitle className="text-xl">{t('auth.createAccount')}</CardTitle>
+                  <CardDescription>{t('auth.startJourney')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {error && (
@@ -153,31 +166,31 @@ export default function LoginPage() {
                     </div>
                   )}
                   <div className="space-y-2">
-                    <Label htmlFor="reg-username">用户名 *</Label>
+                    <Label htmlFor="reg-username">{t('auth.username')} *</Label>
                     <Input
                       id="reg-username"
-                      placeholder="请输入用户名"
+                      placeholder={language === 'zh-CN' ? '请输入用户名' : 'Enter username'}
                       value={regUsername}
                       onChange={(e) => setRegUsername(e.target.value)}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="reg-email">邮箱（选填）</Label>
+                    <Label htmlFor="reg-email">{t('auth.email')} ({language === 'zh-CN' ? '选填' : 'Optional'})</Label>
                     <Input
                       id="reg-email"
                       type="email"
-                      placeholder="请输入邮箱"
+                      placeholder={language === 'zh-CN' ? '请输入邮箱' : 'Enter email'}
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="reg-password">密码 *</Label>
+                    <Label htmlFor="reg-password">{t('auth.password')} *</Label>
                     <Input
                       id="reg-password"
                       type="password"
-                      placeholder="请输入密码（至少6位）"
+                      placeholder={language === 'zh-CN' ? '请输入密码（至少6位）' : 'Enter password (min 6 characters)'}
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                       required
@@ -190,12 +203,12 @@ export default function LoginPage() {
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        注册中...
+                        {t('common.loading')}
                       </>
                     ) : (
                       <>
                         <GraduationCap className="mr-2 h-4 w-4" />
-                        注册
+                        {t('auth.register')}
                       </>
                     )}
                   </Button>
@@ -205,9 +218,9 @@ export default function LoginPage() {
           </Tabs>
         </Card>
 
-        {/* 提示信息 */}
+        {/* Notice */}
         <p className="text-center text-sm text-muted-foreground mt-4">
-          登录即表示同意我们的服务条款
+          {t('auth.loginPrompt')}
         </p>
       </div>
     </div>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { TasksProvider } from '@/hooks/useTasks';
+import { useLanguage } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -15,33 +16,26 @@ import {
   Home,
   LogOut,
   Menu,
-  Settings,
   Timer,
   Trash2,
-  User,
   Users,
-  BarChart3
+  BarChart3,
+  Globe
 } from 'lucide-react';
-
-interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ElementType;
-  badge?: string;
-}
-
-const navItems: NavItem[] = [
-  { label: '首页', href: '/dashboard', icon: Home },
-  { label: '任务管理', href: '/tasks', icon: BookOpen },
-  { label: '番茄钟', href: '/pomodoro', icon: Timer },
-  { label: '学习计划', href: '/plans', icon: Calendar },
-  { label: '数据统计', href: '/stats', icon: BarChart3 },
-  { label: '回收站', href: '/recycle', icon: Trash2 },
-];
 
 function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
+
+  const navItems = [
+    { label: t('nav.home'), href: '/dashboard', icon: Home },
+    { label: t('nav.tasks'), href: '/tasks', icon: BookOpen },
+    { label: t('nav.pomodoro'), href: '/pomodoro', icon: Timer },
+    { label: t('nav.plans'), href: '/plans', icon: Calendar },
+    { label: t('nav.stats'), href: '/stats', icon: BarChart3 },
+    { label: t('nav.recycle'), href: '/recycle', icon: Trash2 },
+  ];
 
   return (
     <aside
@@ -61,7 +55,7 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
         )}
       </div>
 
-      {/* 导航 */}
+      {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -79,17 +73,12 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
               {!collapsed && <span className="font-medium">{item.label}</span>}
-              {item.badge && (
-                <Badge variant="secondary" className="ml-auto text-xs">
-                  {item.badge}
-                </Badge>
-              )}
             </Link>
           );
         })}
       </nav>
 
-      {/* 用户信息 */}
+      {/* User Info */}
       <div className="p-3 border-t">
         {user?.role === 'admin' && (
           <Link
@@ -97,7 +86,7 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-muted-foreground hover:bg-accent hover:text-accent-foreground mb-2`}
           >
             <Users className="w-5 h-5 flex-shrink-0" />
-            {!collapsed && <span className="font-medium">用户管理</span>}
+            {!collapsed && <span className="font-medium">{t('nav.admin')}</span>}
           </Link>
         )}
         <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
@@ -109,7 +98,9 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{user?.username}</p>
-              <p className="text-xs text-muted-foreground">已连续 {user?.streak_days} 天</p>
+              <p className="text-xs text-muted-foreground">
+                {t('dashboard.streakDays')}: {user?.streak_days}
+              </p>
             </div>
           )}
         </div>
@@ -119,7 +110,7 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
           onClick={logout}
         >
           <LogOut className="w-4 h-4 mr-2" />
-          {!collapsed && '退出登录'}
+          {!collapsed && t('auth.logout')}
         </Button>
       </div>
     </aside>
@@ -129,6 +120,16 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
 function MobileNav() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
+
+  const navItems = [
+    { label: t('nav.home'), href: '/dashboard', icon: Home },
+    { label: t('nav.tasks'), href: '/tasks', icon: BookOpen },
+    { label: t('nav.pomodoro'), href: '/pomodoro', icon: Timer },
+    { label: t('nav.plans'), href: '/plans', icon: Calendar },
+    { label: t('nav.stats'), href: '/stats', icon: BarChart3 },
+    { label: t('nav.recycle'), href: '/recycle', icon: Trash2 },
+  ];
 
   return (
     <Sheet>
@@ -174,7 +175,7 @@ function MobileNav() {
               className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             >
               <Users className="w-5 h-5" />
-              <span className="font-medium">用户管理</span>
+              <span className="font-medium">{t('nav.admin')}</span>
             </Link>
           )}
         </nav>
@@ -188,7 +189,9 @@ function MobileNav() {
             </Avatar>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{user?.username}</p>
-              <p className="text-xs text-muted-foreground">已连续 {user?.streak_days} 天</p>
+              <p className="text-xs text-muted-foreground">
+                {t('dashboard.streakDays')}: {user?.streak_days}
+              </p>
             </div>
           </div>
           <Button
@@ -197,7 +200,7 @@ function MobileNav() {
             onClick={logout}
           >
             <LogOut className="w-4 h-4 mr-2" />
-            退出登录
+            {t('auth.logout')}
           </Button>
         </div>
       </SheetContent>
@@ -205,8 +208,30 @@ function MobileNav() {
   );
 }
 
+function LanguageSwitcher() {
+  const { language, setLanguage, t } = useLanguage();
+
+  const toggleLanguage = () => {
+    setLanguage(language === 'zh-CN' ? 'en' : 'zh-CN');
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={toggleLanguage}
+      className="flex items-center gap-1.5"
+      title={t('common.language')}
+    >
+      <Globe className="w-4 h-4" />
+      <span className="text-xs font-medium">{language === 'zh-CN' ? 'EN' : '中'}</span>
+    </Button>
+  );
+}
+
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  const { t } = useLanguage();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -216,7 +241,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   if (!mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">加载中...</div>
+        <div className="animate-pulse text-muted-foreground">{t('common.loading')}</div>
       </div>
     );
   }
@@ -224,7 +249,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">加载中...</div>
+        <div className="animate-pulse text-muted-foreground">{t('common.loading')}</div>
       </div>
     );
   }
@@ -241,23 +266,24 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <div className="flex min-h-screen bg-background">
         <Sidebar />
         <div className="flex-1 flex flex-col">
-          {/* 顶部栏 */}
+          {/* Header */}
           <header className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 bg-card/80 backdrop-blur-md border-b lg:px-6">
             <MobileNav />
-            <div className="flex items-center gap-4 ml-auto">
+            <div className="flex items-center gap-3 ml-auto">
+              <LanguageSwitcher />
               <div className="hidden sm:flex items-center gap-2 text-sm">
                 <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-200">
                   <Timer className="w-3 h-3 mr-1" />
                   {Math.floor((user.total_study_time || 0) / 60)}h {(user.total_study_time || 0) % 60}m
                 </Badge>
                 <Badge variant="outline" className="bg-cyan-500/10 text-cyan-600 border-cyan-200">
-                  连续 {user.streak_days} 天
+                  {t('dashboard.streakDays')}: {user.streak_days}
                 </Badge>
               </div>
             </div>
           </header>
 
-          {/* 主内容 */}
+          {/* Main Content */}
           <main className="flex-1 p-4 lg:p-6">
             {children}
           </main>
