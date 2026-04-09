@@ -43,7 +43,7 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
       }`}
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 p-4 border-b">
+      <div className="flex items-center gap-3 h-16 px-4 border-b">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
           <BookOpen className="w-5 h-5 text-white" />
         </div>

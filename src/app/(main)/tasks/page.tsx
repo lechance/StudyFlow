@@ -874,7 +874,9 @@ export default function TasksPage() {
                 </CardContent>
               </Card>
             ) : (
-              todayTasks.map((task) => renderTaskCard(task, true, true))
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {todayTasks.map((task) => renderTaskCard(task, true, true))}
+              </div>
             )}
           </div>
 
@@ -1055,13 +1057,15 @@ export default function TasksPage() {
                 </CardContent>
               </Card>
             ) : (
-              weekTasks
-                .sort((a, b) => {
-                  if (!a.plan_date) return 1;
-                  if (!b.plan_date) return -1;
-                  return a.plan_date.localeCompare(b.plan_date);
-                })
-                .map((task) => renderTaskCard(task, true, task.plan_date === todayStr))
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {weekTasks
+                  .sort((a, b) => {
+                    if (!a.plan_date) return 1;
+                    if (!b.plan_date) return -1;
+                    return a.plan_date.localeCompare(b.plan_date);
+                  })
+                  .map((task) => renderTaskCard(task, true, task.plan_date === todayStr))}
+              </div>
             )}
           </div>
         </TabsContent>
@@ -1147,12 +1151,14 @@ export default function TasksPage() {
                 </CardContent>
               </Card>
             ) : (
-              tasks
-                .sort((a, b) => {
-                  const priorityOrder = { high: 1, medium: 2, low: 3 };
-                  return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
-                })
-                .map((task) => renderTaskCard(task, true, task.plan_date === todayStr))
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {tasks
+                  .sort((a, b) => {
+                    const priorityOrder = { high: 1, medium: 2, low: 3 };
+                    return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
+                  })
+                  .map((task) => renderTaskCard(task, true, task.plan_date === todayStr))}
+              </div>
             )}
           </div>
 
