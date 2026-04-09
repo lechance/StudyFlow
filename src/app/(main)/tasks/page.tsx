@@ -149,12 +149,7 @@ export default function TasksPage() {
     return tasks.filter(task => !task.plan_date && task.status !== 'completed');
   }, [tasks]);
 
-  // Fetch tasks when tab changes
-  useEffect(() => {
-    fetchTasks();
-  }, [activeTab, fetchTasks]);
-
-  // Fetch subtasks for a task
+  // Get tasks not in any plan
   const fetchSubtasks = async (taskId: string) => {
     try {
       const res = await api.get(`/api/subtasks?taskId=${taskId}`);
