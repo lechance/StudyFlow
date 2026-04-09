@@ -13,6 +13,7 @@ StudyFlow 是一款面向学生和职场人的智能学习计划与时间管理 
 - **Styling**: Tailwind CSS 4
 - **数据库**: SQLite (better-sqlite3)
 - **图标**: Lucide React
+- **容器化**: Docker
 
 ## 目录结构
 
@@ -29,6 +30,7 @@ StudyFlow 是一款面向学生和职场人的智能学习计划与时间管理 
 │   │   ├── api/                 # API 路由
 │   │   │   ├── auth/            # 认证 API
 │   │   │   ├── tasks/           # 任务 API
+│   │   │   ├── subtasks/        # 子任务 API
 │   │   │   ├── study/           # 学习记录 API
 │   │   │   ├── plans/           # 计划 API
 │   │   │   ├── stats/           # 统计 API
@@ -47,6 +49,12 @@ StudyFlow 是一款面向学生和职场人的智能学习计划与时间管理 
 │       └── types.ts             # TypeScript 类型定义
 ├── data/                        # SQLite 数据库目录
 ├── scripts/                     # 构建脚本
+├── Dockerfile                   # Docker 构建文件
+├── Dockerfile.prod              # 生产环境 Docker 构建文件
+├── docker-compose.yml          # Docker Compose 配置
+├── docker-compose.dev.yml      # 开发环境 Docker Compose 配置
+├── .dockerignore               # Docker 忽略文件
+├── DOCKER_DEPLOY.md             # Docker 部署指南
 └── package.json
 ```
 
@@ -60,6 +68,7 @@ StudyFlow 是一款面向学生和职场人的智能学习计划与时间管理 
 - 截止日期和预计时长
 - 任务按优先级和截止日期自动排序
 - 回收站功能（30天恢复期）
+- **子任务支持**：每个任务可添加子任务，显示完成进度
 
 ### 2. 番茄钟
 - 25分钟专注 + 5分钟休息（可自定义）
@@ -85,6 +94,16 @@ StudyFlow 是一款面向学生和职场人的智能学习计划与时间管理 
 - 会话管理
 - 管理员用户管理
 
+### 6. 国际化（i18n）
+- 中英文支持
+- 自动检测浏览器语言
+- 语言切换持久化
+
+### 7. Docker 部署
+- 支持 Docker 容器化部署
+- 多阶段构建优化镜像大小
+- 数据卷持久化
+
 ## API 接口
 
 | 接口 | 方法 | 描述 |
@@ -96,6 +115,7 @@ StudyFlow 是一款面向学生和职场人的智能学习计划与时间管理 
 | `/api/tasks` | GET/POST | 获取/创建任务 |
 | `/api/tasks/[id]` | GET/PUT/DELETE | 任务操作 |
 | `/api/tasks/recycle` | GET | 回收站 |
+| `/api/subtasks` | GET/POST/PUT/DELETE | 子任务 CRUD |
 | `/api/study/records` | GET/POST | 学习记录 |
 | `/api/plans` | GET/POST | 每日计划 |
 | `/api/plans/checkin` | GET/POST | 打卡 |
@@ -116,6 +136,19 @@ pnpm build
 
 # 启动生产服务
 pnpm start
+```
+
+## Docker 部署
+
+```bash
+# 构建并启动
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+
+# 停止
+docker-compose down
 ```
 
 ## 访问地址

@@ -24,6 +24,11 @@ export interface Task {
   is_deleted: number;
   created_at: string;
   updated_at: string;
+  // Subtask fields (added at runtime)
+  subtasks?: Subtask[];
+  subtask_progress?: number;
+  subtask_completed?: number;
+  subtask_total?: number;
 }
 
 export interface StudyRecord {
@@ -70,6 +75,17 @@ export interface RecycleBinItem {
   task_id: string;
   task_data: string;
   deleted_at: string;
+}
+
+export interface Subtask {
+  id: string;
+  task_id: string;
+  user_id: string;
+  title: string;
+  completed: number;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 // API 响应类型

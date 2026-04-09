@@ -28,9 +28,26 @@ export async function GET(
       }, { status: 404 });
     }
 
+    // Get subtasks for this task
+    const subtasks = db.prepare(`
+      SELECT * FROM subtasks 
+      WHERE task_id = ? 
+      ORDER BY sort_order ASC, created_at ASC
+    `).all(id);
+
+    const completedCount = subtasks.filter((s: any) => s.completed === 1).length;
+    const totalCount = subtasks.length;
+    const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
     return NextResponse.json<ApiResponse>({
       success: true,
-      data: task
+      data: {
+        ...task,
+        subtasks,
+        subtask_progress: progress,
+        subtask_completed: completedCount,
+        subtask_total: totalCount
+      }
     });
   } catch (error) {
     console.error('Get task error:', error);

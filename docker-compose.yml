@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: studyflow-app
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - COZE_PROJECT_ENV=PROD
+    volumes:
+      # Persist data directory for SQLite database
+      - studyflow_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  studyflow_data:
+    driver: local
+
+networks:
+  default:
+    name: studyflow-network

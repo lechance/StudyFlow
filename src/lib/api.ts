@@ -154,3 +154,53 @@ export const usersApi = {
   delete: (id: string) =>
     fetchApi(`/users/${id}`, { method: 'DELETE' }),
 };
+
+// 子任务 API
+export const subtasksApi = {
+  getByTaskId: (taskId: string) =>
+    fetchApi<any[]>(`/subtasks?taskId=${taskId}`),
+
+  create: (taskId: string, title: string, sortOrder?: number) =>
+    fetchApi<any>('/subtasks', {
+      method: 'POST',
+      body: JSON.stringify({ taskId, title, sortOrder }),
+    }),
+
+  update: (id: string, data: { completed?: number; title?: string; sortOrder?: number }) =>
+    fetchApi<any>('/subtasks', {
+      method: 'PUT',
+      body: JSON.stringify({ id, ...data }),
+    }),
+
+  delete: (id: string) =>
+    fetchApi(`/subtasks?id=${id}`, { method: 'DELETE' }),
+};
+
+// Combined API object for easier access
+export const api = {
+  get: async <T = any>(endpoint: string): Promise<ApiResponse<T>> => {
+    return fetchApi<T>(endpoint);
+  },
+  post: async <T = any>(endpoint: string, data: any): Promise<ApiResponse<T>> => {
+    return fetchApi<T>(endpoint, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+  put: async <T = any>(endpoint: string, data: any): Promise<ApiResponse<T>> => {
+    return fetchApi<T>(endpoint, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+  del: async <T = any>(endpoint: string): Promise<ApiResponse<T>> => {
+    return fetchApi<T>(endpoint, { method: 'DELETE' });
+  },
+  ...authApi,
+  ...tasksApi,
+  ...studyApi,
+  ...plansApi,
+  ...statsApi,
+  ...usersApi,
+  ...subtasksApi,
+};

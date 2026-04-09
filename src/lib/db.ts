@@ -110,12 +110,27 @@ function initializeTables(database: Database.Database) {
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
+    -- 子任务表
+    CREATE TABLE IF NOT EXISTS subtasks (
+      id TEXT PRIMARY KEY,
+      task_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      completed INTEGER DEFAULT 0,
+      sort_order INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now')),
+      FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
     -- 创建索引
     CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
     CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
     CREATE INDEX IF NOT EXISTS idx_study_records_user_date ON study_records(user_id, date);
     CREATE INDEX IF NOT EXISTS idx_daily_plans_user_date ON daily_plans(user_id, date);
     CREATE INDEX IF NOT EXISTS idx_check_ins_user_date ON check_ins(user_id, date);
+    CREATE INDEX IF NOT EXISTS idx_subtasks_task_id ON subtasks(task_id);
   `);
 }
 

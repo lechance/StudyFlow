@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useTasks } from '@/hooks/useTasks';
 import { useLanguage } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
@@ -48,9 +48,11 @@ import {
   PlayCircle,
   Sparkles,
   Filter,
-  SortAsc
+  SortAsc,
+  ListTodo,
+  X
 } from 'lucide-react';
-import { TASK_CATEGORIES } from '@/lib/types';
+import { api } from '@/lib/api';
 import { format, differenceInDays, isPast, isToday } from 'date-fns';
 import { toast } from 'sonner';
 
@@ -61,7 +63,7 @@ const PRIORITY_CONFIG: Record<string, { labelKey: string; textColor: string }> =
 };
 
 export default function TasksPage() {
-  const { tasks, loading, addTask, updateTask, deleteTask, clearCompleted } = useTasks();
+  const { tasks, loading, addTask, updateTask, deleteTask, clearCompleted, fetchTasks } = useTasks();
   const { t, language } = useLanguage();
   
   // Get category and priority translations
@@ -76,10 +78,16 @@ export default function TasksPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
+  const [detailTask, setDetailTask] = useState<any>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'priority' | 'deadline'>('priority');
+  
+  // Subtask state
+  const [subtasks, setSubtasks] = useState<any[]>([]);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
   // New task form - use category keys that can be translated
   const [newTask, setNewTask] = useState({
@@ -131,6 +139,77 @@ export default function TasksPage() {
     const highPriority = tasks.filter(t => t.priority === 'high' && t.status !== 'completed').length;
     return { total, completed, inProgress, pending, highPriority };
   }, [tasks]);
+
+  // Fetch subtasks for a task
+  const fetchSubtasks = async (taskId: string) => {
+    try {
+      const res = await api.get(`/api/subtasks?taskId=${taskId}`);
+      if (res.success) {
+        setSubtasks(res.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch subtasks:', error);
+    }
+  };
+
+  // Open task detail dialog
+  const openTaskDetail = async (task: any) => {
+    setDetailTask(task);
+    await fetchSubtasks(task.id);
+    setShowDetailDialog(true);
+  };
+
+  // Toggle subtask completion
+  const toggleSubtask = async (subtaskId: string, currentCompleted: number) => {
+    try {
+      const newCompleted = currentCompleted ? 0 : 1;
+      const res = await api.put('/api/subtasks', { id: subtaskId, completed: newCompleted });
+      if (res.success) {
+        // Update local state
+        setSubtasks(prev => prev.map(s => 
+          s.id === subtaskId ? { ...s, completed: newCompleted } : s
+        ));
+        // Refresh task list to update progress
+        await fetchTasks();
+      }
+    } catch (error) {
+      console.error('Failed to toggle subtask:', error);
+      toast.error(t('common.error'));
+    }
+  };
+
+  // Add new subtask
+  const addSubtask = async () => {
+    if (!newSubtaskTitle.trim() || !detailTask) return;
+    try {
+      const res = await api.post('/api/subtasks', { 
+        taskId: detailTask.id, 
+        title: newSubtaskTitle.trim() 
+      });
+      if (res.success) {
+        setSubtasks(prev => [...prev, res.data]);
+        setNewSubtaskTitle('');
+        toast.success(t('common.success'));
+      }
+    } catch (error) {
+      console.error('Failed to add subtask:', error);
+      toast.error(t('common.error'));
+    }
+  };
+
+  // Delete subtask
+  const deleteSubtask = async (subtaskId: string) => {
+    try {
+      const res = await api.del(`/api/subtasks?id=${subtaskId}`);
+      if (res.success) {
+        setSubtasks(prev => prev.filter(s => s.id !== subtaskId));
+        toast.success(t('common.success'));
+      }
+    } catch (error) {
+      console.error('Failed to delete subtask:', error);
+      toast.error(t('common.error'));
+    }
+  };
 
   const handleAddTask = async () => {
     if (!newTask.title.trim()) {
@@ -484,6 +563,8 @@ export default function TasksPage() {
           filteredTasks.map((task) => {
             const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
             const deadlineInfo = getDeadlineInfo(task.deadline);
+            const hasSubtasks = (task.subtask_total || 0) > 0;
+            const subtaskProgress = task.subtask_progress || 0;
 
             return (
               <Card
@@ -496,10 +577,14 @@ export default function TasksPage() {
                     checked={task.status === 'completed'}
                     onCheckedChange={(checked) => handleStatusChange(task.id, checked ? 'completed' : 'pending')}
                     className="w-5 h-5"
+                    onClick={(e) => e.stopPropagation()}
                   />
 
-                  {/* Task Info */}
-                  <div className="flex-1 min-w-0">
+                  {/* Task Info - Clickable */}
+                  <div 
+                    className="flex-1 min-w-0 cursor-pointer" 
+                    onClick={() => openTaskDetail(task)}
+                  >
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
                         {task.title}
@@ -508,6 +593,12 @@ export default function TasksPage() {
                         {t(priorityConfig?.labelKey || 'priority.medium')}
                       </Badge>
                       <Badge variant="secondary">{t(`category.${task.category}`)}</Badge>
+                      {hasSubtasks && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
+                          <ListTodo className="w-3 h-3 mr-1" />
+                          {task.subtask_completed || 0}/{task.subtask_total || 0}
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       {deadlineInfo && (
@@ -522,6 +613,13 @@ export default function TasksPage() {
                           {t('tasks.minutes', { minutes: task.estimated_time })}
                         </span>
                       )}
+                      {/* Subtask Progress Bar */}
+                      {hasSubtasks && (
+                        <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+                          <Progress value={subtaskProgress} className="h-1.5 flex-1" />
+                          <span className="text-xs">{subtaskProgress}%</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -531,7 +629,10 @@ export default function TasksPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleStatusChange(task.id, 'in_progress')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStatusChange(task.id, 'in_progress');
+                        }}
                         title={t('common.startTask')}
                       >
                         <PlayCircle className="w-4 h-4 text-cyan-500" />
@@ -540,7 +641,8 @@ export default function TasksPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setEditingTask(task);
                         setShowEditDialog(true);
                       }}
@@ -551,7 +653,10 @@ export default function TasksPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDeleteTask(task.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteTask(task.id);
+                      }}
                       title={t('common.delete')}
                       className="hover:text-destructive"
                     >
@@ -592,6 +697,113 @@ export default function TasksPage() {
           </AlertDialog>
         </div>
       )}
+
+      {/* Task Detail Dialog */}
+      <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl">{detailTask?.title}</DialogTitle>
+            <DialogDescription>
+              {detailTask?.deadline && (
+                <span className="flex items-center gap-1 text-sm">
+                  <Calendar className="w-4 h-4" />
+                  {t('tasks.deadline')}: {format(new Date(detailTask.deadline), 'yyyy-MM-dd')}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Task Info */}
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="outline" className={PRIORITY_CONFIG[detailTask?.priority]?.textColor}>
+                {t(PRIORITY_CONFIG[detailTask?.priority]?.labelKey || 'priority.medium')}
+              </Badge>
+              <Badge variant="secondary">{t(`category.${detailTask?.category}`)}</Badge>
+              {detailTask?.status === 'completed' && (
+                <Badge className="bg-green-500">{t('tasks.completed')}</Badge>
+              )}
+            </div>
+
+            {/* Subtasks Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium flex items-center gap-2">
+                  <ListTodo className="w-4 h-4" />
+                  {t('tasks.subtasks') || '子任务'}
+                </h4>
+                {subtasks.length > 0 && (
+                  <span className="text-sm text-muted-foreground">
+                    {subtasks.filter(s => s.completed).length}/{subtasks.length}
+                  </span>
+                )}
+              </div>
+              
+              {/* Subtask Progress */}
+              {subtasks.length > 0 && (
+                <Progress 
+                  value={subtasks.length > 0 ? (subtasks.filter(s => s.completed).length / subtasks.length) * 100 : 0} 
+                  className="h-2" 
+                />
+              )}
+
+              {/* Subtask List */}
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {subtasks.map((subtask) => (
+                  <div 
+                    key={subtask.id} 
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 group"
+                  >
+                    <Checkbox
+                      checked={subtask.completed === 1}
+                      onCheckedChange={() => toggleSubtask(subtask.id, subtask.completed)}
+                    />
+                    <span className={`flex-1 ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
+                      {subtask.title}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:text-destructive"
+                      onClick={() => deleteSubtask(subtask.id)}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+                {subtasks.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    {t('tasks.noSubtasks') || '暂无子任务'}
+                  </p>
+                )}
+              </div>
+
+              {/* Add Subtask */}
+              <div className="flex gap-2 pt-2">
+                <Input
+                  placeholder={t('tasks.addSubtaskPlaceholder') || '添加子任务...'}
+                  value={newSubtaskTitle}
+                  onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      addSubtask();
+                    }
+                  }}
+                />
+                <Button onClick={addSubtask} disabled={!newSubtaskTitle.trim()}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
+              {t('common.close') || '关闭'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Task Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>

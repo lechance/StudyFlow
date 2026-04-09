@@ -119,6 +119,9 @@ const zh: Record<string, string> = {
   'tasks.taskUpdated': '任务更新成功',
   'tasks.taskDeleted': '任务已移入回收站',
   'tasks.cleared': '已完成任务已清空',
+  'tasks.subtasks': '子任务',
+  'tasks.noSubtasks': '暂无子任务',
+  'tasks.addSubtaskPlaceholder': '添加子任务...',
 
   // Pomodoro
   'pomodoro.title': '番茄钟',
@@ -392,6 +395,9 @@ const en: Record<string, string> = {
   'tasks.taskUpdated': 'Task updated successfully',
   'tasks.taskDeleted': 'Task moved to recycle bin',
   'tasks.cleared': 'Completed tasks cleared',
+  'tasks.subtasks': 'Subtasks',
+  'tasks.noSubtasks': 'No subtasks yet',
+  'tasks.addSubtaskPlaceholder': 'Add a subtask...',
 
   // Pomodoro
   'pomodoro.title': 'Pomodoro',

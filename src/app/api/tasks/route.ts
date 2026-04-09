@@ -26,9 +26,30 @@ export async function GET(request: NextRequest) {
 
     const tasks = db.prepare(query).all(user.id) as Task[];
 
+    // Calculate subtask progress for each task
+    const tasksWithProgress = tasks.map(task => {
+      const subtasks = db.prepare(`
+        SELECT * FROM subtasks 
+        WHERE task_id = ? 
+        ORDER BY sort_order ASC, created_at ASC
+      `).all(task.id);
+      
+      const completedCount = subtasks.filter((s: any) => s.completed === 1).length;
+      const totalCount = subtasks.length;
+      const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+      
+      return {
+        ...task,
+        subtasks,
+        subtask_progress: progress,
+        subtask_completed: completedCount,
+        subtask_total: totalCount
+      };
+    });
+
     return NextResponse.json<ApiResponse>({
       success: true,
-      data: tasks
+      data: tasksWithProgress
     });
   } catch (error) {
     console.error('Get tasks error:', error);
