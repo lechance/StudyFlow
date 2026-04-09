@@ -49,14 +49,31 @@ export async function GET(request: NextRequest) {
 
     const tasks = db.prepare(query).all(...params) as Task[];
 
-    // Calculate subtask progress for each task
-    const tasksWithProgress = tasks.map(task => {
-      const subtasks = db.prepare(`
+    // Batch fetch subtasks to avoid N+1 queries
+    const taskIds = tasks.map(t => t.id);
+    let subtasksMap: Record<string, any[]> = {};
+    
+    if (taskIds.length > 0) {
+      const placeholders = taskIds.map(() => '?').join(',');
+      const allSubtasks = db.prepare(`
         SELECT * FROM subtasks 
-        WHERE task_id = ? 
+        WHERE task_id IN (${placeholders})
         ORDER BY sort_order ASC, created_at ASC
-      `).all(task.id);
+      `).all(...taskIds) as any[];
       
+      // Group subtasks by task_id
+      subtasksMap = allSubtasks.reduce((acc, subtask) => {
+        if (!acc[subtask.task_id]) {
+          acc[subtask.task_id] = [];
+        }
+        acc[subtask.task_id].push(subtask);
+        return acc;
+      }, {} as Record<string, any[]>);
+    }
+
+    // Calculate progress for each task
+    const tasksWithProgress = tasks.map(task => {
+      const subtasks = subtasksMap[task.id] || [];
       const completedCount = subtasks.filter((s: any) => s.completed === 1).length;
       const totalCount = subtasks.length;
       const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;

@@ -14,7 +14,9 @@ export function getDb(): Database.Database {
     }
     
     db = new Database(dbPath);
-    db.pragma('journal_mode = WAL');
+    // Use DELETE journal mode instead of WAL to avoid concurrency issues
+    db.pragma('journal_mode = DELETE');
+    db.pragma('synchronous = NORMAL');
     initializeTables(db);
   }
   return db;
