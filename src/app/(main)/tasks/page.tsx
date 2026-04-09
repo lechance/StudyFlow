@@ -54,15 +54,25 @@ import { TASK_CATEGORIES } from '@/lib/types';
 import { format, differenceInDays, isPast, isToday } from 'date-fns';
 import { toast } from 'sonner';
 
-const PRIORITY_CONFIG: Record<string, { label: string; textColor: string }> = {
-  high: { label: '高', textColor: 'text-red-500' },
-  medium: { label: '中', textColor: 'text-yellow-500' },
-  low: { label: '低', textColor: 'text-green-500' },
+const PRIORITY_CONFIG: Record<string, { labelKey: string; textColor: string }> = {
+  high: { labelKey: 'priority.high', textColor: 'text-red-500' },
+  medium: { labelKey: 'priority.medium', textColor: 'text-yellow-500' },
+  low: { labelKey: 'priority.low', textColor: 'text-green-500' },
 };
 
 export default function TasksPage() {
   const { tasks, loading, addTask, updateTask, deleteTask, clearCompleted } = useTasks();
   const { t, language } = useLanguage();
+  
+  // Get category and priority translations
+  const getCategoryLabel = (cat: string) => {
+    return t(`category.${cat}`) || cat;
+  };
+  
+  const getPriorityLabel = (priority: string) => {
+    return t(PRIORITY_CONFIG[priority]?.labelKey || 'priority.medium');
+  };
+  
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
@@ -71,24 +81,17 @@ export default function TasksPage() {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'priority' | 'deadline'>('priority');
 
-  // New task form
+  // New task form - use category keys that can be translated
   const [newTask, setNewTask] = useState({
     title: '',
-    category: language === 'zh-CN' ? '学习' : 'Study',
+    category: 'study',
     priority: 'medium',
     deadline: '',
     estimated_time: ''
   });
 
-  // Update category options based on language
-  const categoryLabels = {
-    'zh-CN': { '学习': '学习', '工作': '工作', '阅读': '阅读', '运动': '运动', '其他': '其他' },
-    'en': { 'Study': 'Study', 'Work': 'Work', 'Reading': 'Reading', 'Exercise': 'Exercise', 'Other': 'Other' }
-  };
-  
-  const categories = language === 'zh-CN' 
-    ? ['学习', '工作', '阅读', '运动', '其他']
-    : ['Study', 'Work', 'Reading', 'Exercise', 'Other'];
+  // Category keys for form options
+  const categoryKeys = ['study', 'work', 'reading', 'exercise', 'other'];
 
   // Filter and sort tasks
   const filteredTasks = useMemo(() => {
@@ -131,7 +134,7 @@ export default function TasksPage() {
 
   const handleAddTask = async () => {
     if (!newTask.title.trim()) {
-      toast.error(t('tasks.taskName') + ' ' + (language === 'zh-CN' ? '不能为空' : 'required'));
+      toast.error(t('tasks.taskName') + ' ' + t('common.required'));
       return;
     }
 
@@ -149,7 +152,7 @@ export default function TasksPage() {
       setShowAddDialog(false);
       setNewTask({ 
         title: '', 
-        category: language === 'zh-CN' ? '学习' : 'Study', 
+        category: 'study', 
         priority: 'medium', 
         deadline: '', 
         estimated_time: '' 
@@ -182,7 +185,7 @@ export default function TasksPage() {
   const handleStatusChange = async (taskId: string, status: 'pending' | 'in_progress' | 'completed') => {
     await updateTask(taskId, { status });
     if (status === 'completed') {
-      toast.success(language === 'zh-CN' ? '太棒了！任务完成' : 'Great job! Task completed');
+      toast.success(t('common.greatJob'));
     }
   };
 
@@ -225,7 +228,7 @@ export default function TasksPage() {
       };
     }
     return { 
-      text: `${days} ${language === 'zh-CN' ? '天' : 'days'}`, 
+      text: t('common.days', { count: days }), 
       color: 'text-muted-foreground', 
       urgent: false 
     };
@@ -258,14 +261,14 @@ export default function TasksPage() {
             <DialogHeader>
               <DialogTitle>{t('tasks.newTask')}</DialogTitle>
               <DialogDescription>
-                {language === 'zh-CN' ? '创建新的学习任务，开始你的学习之旅' : 'Create a new study task to start your learning journey'}
+                {t('dashboard.createJourney')}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>{t('tasks.taskName')} *</Label>
                 <Input
-                  placeholder={language === 'zh-CN' ? '请输入任务名称' : 'Enter task name'}
+                  placeholder={t('common.enterTaskName')}
                   value={newTask.title}
                   onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                 />
@@ -278,8 +281,8 @@ export default function TasksPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      {categoryKeys.map((key) => (
+                        <SelectItem key={key} value={key}>{t(`category.${key}`)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -430,24 +433,24 @@ export default function TasksPage() {
           <Filter className="w-4 h-4 text-muted-foreground" />
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-32">
-              <SelectValue placeholder={language === 'zh-CN' ? '状态' : 'Status'} />
+              <SelectValue placeholder={t('common.status')} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('tasks.allStatus')}</SelectItem>
-              <SelectItem value="pending">{t('status.pending')}</SelectItem>
-              <SelectItem value="in_progress">{t('status.inProgress')}</SelectItem>
-              <SelectItem value="completed">{t('status.completed')}</SelectItem>
+              <SelectItem value="pending">{t('tasks.pending')}</SelectItem>
+              <SelectItem value="in_progress">{t('tasks.inProgress')}</SelectItem>
+              <SelectItem value="completed">{t('tasks.completed')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <Select value={filterCategory} onValueChange={setFilterCategory}>
           <SelectTrigger className="w-32">
-            <SelectValue placeholder={language === 'zh-CN' ? '分类' : 'Category'} />
+            <SelectValue placeholder={t('common.category')} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('tasks.allCategory')}</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+            {categoryKeys.map((key) => (
+              <SelectItem key={key} value={key}>{t(`category.${key}`)}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -502,9 +505,9 @@ export default function TasksPage() {
                         {task.title}
                       </span>
                       <Badge variant="outline" className={`${priorityConfig?.textColor} border-current`}>
-                        {priorityConfig?.label}
+                        {t(priorityConfig?.labelKey || 'priority.medium')}
                       </Badge>
-                      <Badge variant="secondary">{task.category}</Badge>
+                      <Badge variant="secondary">{t(`category.${task.category}`)}</Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       {deadlineInfo && (
@@ -529,7 +532,7 @@ export default function TasksPage() {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleStatusChange(task.id, 'in_progress')}
-                        title={language === 'zh-CN' ? '开始任务' : 'Start Task'}
+                        title={t('common.startTask')}
                       >
                         <PlayCircle className="w-4 h-4 text-cyan-500" />
                       </Button>
@@ -613,8 +616,8 @@ export default function TasksPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((cat) => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      {categoryKeys.map((key) => (
+                        <SelectItem key={key} value={key}>{t(`category.${key}`)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

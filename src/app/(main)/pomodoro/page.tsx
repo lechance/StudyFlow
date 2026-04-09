@@ -124,7 +124,7 @@ export default function PomodoroPage() {
         setShowComplete(true);
         setTimeout(() => setShowComplete(false), 3000);
         toast.success(t('pomodoro.focusComplete'), {
-          description: `${t('pomodoro.focusing')} ${duration} ${language === 'zh-CN' ? '分钟' : 'min'}`
+          description: `${t('pomodoro.focusing')} ${duration} ${t('common.minutes')}`
         });
       } else {
         toast.success(t('pomodoro.breakEnd'), { description: t('pomodoro.keepGoing') });

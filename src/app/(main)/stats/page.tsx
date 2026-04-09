@@ -260,9 +260,7 @@ export default function StatsPage() {
                           {isToday(new Date(day.date)) ? t('stats.today') : format(new Date(day.date), language === 'zh-CN' ? 'MM月dd日' : 'MMM d')}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {language === 'zh-CN' 
-                            ? `完成 ${day.completed_tasks} 个任务` 
-                            : `${day.completed_tasks} tasks completed`}
+                          {t('stats.tasksCompleted', { count: day.completed_tasks })}
                         </p>
                       </div>
                     </div>

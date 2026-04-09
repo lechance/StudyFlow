@@ -149,9 +149,7 @@ export default function DashboardPage() {
               <Calendar className="w-5 h-5" />
               {t('dashboard.todayPlan')}
               <Badge variant="outline" className="ml-auto">
-                {language === 'zh-CN' 
-                  ? format(new Date(), 'MM月dd日')
-                  : format(new Date(), 'MMM dd')}
+                {format(new Date(), language === 'zh-CN' ? 'MM月dd日' : 'MMM dd')}
               </Badge>
             </CardTitle>
           </CardHeader>
@@ -276,7 +274,7 @@ export default function DashboardPage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium truncate">{task.title}</p>
                     <p className="text-sm text-muted-foreground">
-                      {t(`category.${task.category}`)} · {task.deadline ? `${language === 'zh-CN' ? '截止 ' : 'Due '}${format(new Date(task.deadline), language === 'zh-CN' ? 'MM/dd' : 'MM/dd')}` : (language === 'zh-CN' ? '无截止日期' : 'No deadline')}
+                      {t(`category.${task.category}`)} · {task.deadline ? `${t('common.due')} ${format(new Date(task.deadline), 'MM/dd')}` : t('dashboard.noDeadline')}
                     </p>
                   </div>
                   <Badge variant="outline" className={

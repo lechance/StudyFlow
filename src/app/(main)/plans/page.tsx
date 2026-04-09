@@ -77,7 +77,7 @@ export default function PlansPage() {
   // Save plan
   const savePlan = async () => {
     if (!planContent.trim()) {
-      toast.error(language === 'zh-CN' ? '请输入计划内容' : 'Please enter plan content');
+      toast.error(t('plans.pleaseEnterPlan'));
       return;
     }
 
@@ -106,7 +106,7 @@ export default function PlansPage() {
         toast.success(t('plans.checkInSuccess'));
       }
     } else {
-      toast.error(res.error || (language === 'zh-CN' ? '打卡失败' : 'Check-in failed'));
+      toast.error(res.error || t('plans.checkinFailed'));
     }
   };
 
@@ -130,17 +130,11 @@ export default function PlansPage() {
   };
 
   // Plan templates
-  const planTemplates = language === 'zh-CN' 
-    ? [
-        '1. 完成数学作业\n2. 复习英语单词\n3. 阅读30分钟',
-        '1. 预习下节课内容\n2. 整理笔记\n3. 做练习题',
-        '1. 晨读30分钟\n2. 在线课程学习\n3. 复习本周重点',
-      ]
-    : [
-        '1. Complete math homework\n2. Review English vocabulary\n3. Read for 30 minutes',
-        '1. Preview next lesson\n2. Organize notes\n3. Practice exercises',
-        '1. Morning reading 30 min\n2. Online course\n3. Review weekly highlights',
-      ];
+  const planTemplates = [
+    t('plans.templates.study'),
+    t('plans.templates.preview'),
+    t('plans.templates.morning'),
+  ];
 
   const applyTemplate = (template: string) => {
     setPlanContent(template);
@@ -240,9 +234,7 @@ export default function PlansPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <CalendarIcon className="w-5 h-5" />
-              {language === 'zh-CN'
-                ? format(selectedDate, 'yyyy年MM月dd日')
-                : format(selectedDate, 'MMMM d, yyyy')}
+              {format(selectedDate, language === 'zh-CN' ? 'yyyy年MM月dd日' : 'MMMM d, yyyy')}
               {isToday(selectedDate) && <Badge>{t('plans.today')}</Badge>}
             </CardTitle>
             <Dialog>
@@ -255,7 +247,7 @@ export default function PlansPage() {
                 <DialogHeader>
                   <DialogTitle>{t('plans.templates')}</DialogTitle>
                   <DialogDescription>
-                    {language === 'zh-CN' ? '选择一个模板快速开始' : 'Choose a template to get started quickly'}
+                    {t('common.planningTip')}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-2 py-4">

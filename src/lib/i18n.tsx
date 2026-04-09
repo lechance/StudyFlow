@@ -226,6 +226,63 @@ const zh: Record<string, string> = {
   'recycle.taskPermanentlyDeleted': '任务已永久删除',
   'recycle.tip': '温馨提示',
   'recycle.tipContent': '删除的任务会在回收站保留30天，30天后会自动清除。请及时恢复需要的任务。',
+  
+  // Additional translations for conditional rendering
+  'common.clearing': '清空中...',
+  'common.pleaseEnter': '请输入{content}',
+  'common.failed': '失败',
+  'common.unknown': '未知任务',
+  'common.other': '其他',
+  'common.due': '截止',
+  'common.noDeadline': '无截止日期',
+  'common.required': '不能为空',
+  'common.greatJob': '太棒了！任务完成',
+  'common.days': '{count} 天',
+  'common.enterTaskName': '请输入任务名称',
+  'common.status': '状态',
+  'common.category': '分类',
+  'common.startTask': '开始任务',
+  'common.minutes': '分钟',
+  'common.planningTip': '选择一个模板快速开始',
+  
+  // Priority
+  'priority.high': '高',
+  'priority.medium': '中',
+  'priority.low': '低',
+  
+  // Categories
+  'category.学习': '学习',
+  'category.工作': '工作',
+  'category.阅读': '阅读',
+  'category.运动': '运动',
+  'category.其他': '其他',
+  'category.study': '学习',
+  'category.work': '工作',
+  'category.reading': '阅读',
+  'category.exercise': '运动',
+  'category.other': '其他',
+  
+  // Login page
+  'login.tagline': '智能学习助手，让进步看得见',
+  'login.enterUsername': '请输入用户名',
+  'login.enterPassword': '请输入密码',
+  'login.enterEmail': '请输入邮箱',
+  'login.optional': '选填',
+  'login.enterPasswordMin': '请输入密码（至少6位）',
+  
+  // Plans page
+  'plans.pleaseEnterPlan': '请输入计划内容',
+  'plans.checkinFailed': '打卡失败',
+  'plans.templates.study': '1. 完成数学作业\n2. 复习英语单词\n3. 阅读30分钟',
+  'plans.templates.preview': '1. 预习下节课内容\n2. 整理笔记\n3. 做练习题',
+  'plans.templates.morning': '1. 晨读30分钟\n2. 在线课程学习\n3. 复习本周重点',
+  
+  // Recycle page
+  'recycle.confirmClearAll': '清空后所有任务将无法恢复，确定要清空吗？',
+  
+  // Dashboard
+  'dashboard.noDeadline': '无截止日期',
+  'dashboard.createJourney': '创建新的学习任务，开始你的学习之旅',
 };
 
 // English translations
@@ -442,18 +499,84 @@ const en: Record<string, string> = {
   'recycle.taskPermanentlyDeleted': 'Task permanently deleted',
   'recycle.tip': 'Tips',
   'recycle.tipContent': 'Deleted tasks are kept for 30 days in recycle bin. Remember to restore tasks you need before they are automatically removed.',
+  
+  // Additional translations for conditional rendering
+  'common.clearing': 'Clearing...',
+  'common.pleaseEnter': 'Please enter {content}',
+  'common.failed': 'Failed',
+  'common.unknown': 'Unknown',
+  'common.other': 'Other',
+  'common.due': 'Due',
+  'common.noDeadline': 'No deadline',
+  'common.required': 'required',
+  'common.greatJob': 'Great job! Task completed',
+  'common.days': '{count} days',
+  'common.enterTaskName': 'Enter task name',
+  'common.status': 'Status',
+  'common.category': 'Category',
+  'common.startTask': 'Start Task',
+  'common.minutes': 'min',
+  'common.planningTip': 'Choose a template to get started quickly',
+  
+  // Priority
+  'priority.high': 'High',
+  'priority.medium': 'Medium',
+  'priority.low': 'Low',
+  
+  // Categories
+  'category.学习': 'Study',
+  'category.工作': 'Work',
+  'category.阅读': 'Reading',
+  'category.运动': 'Exercise',
+  'category.其他': 'Other',
+  'category.study': 'Study',
+  'category.work': 'Work',
+  'category.reading': 'Reading',
+  'category.exercise': 'Exercise',
+  'category.other': 'Other',
+  
+  // Login page
+  'login.tagline': 'Smart Study Assistant, Track Your Progress',
+  'login.enterUsername': 'Enter username',
+  'login.enterPassword': 'Enter password',
+  'login.enterEmail': 'Enter email',
+  'login.optional': 'Optional',
+  'login.enterPasswordMin': 'Enter password (min 6 characters)',
+  
+  // Plans page
+  'plans.pleaseEnterPlan': 'Please enter plan content',
+  'plans.checkinFailed': 'Check-in failed',
+  'plans.templates.study': 'Study\n1. Complete math homework\n2. Review English vocabulary\n3. Read for 30 minutes',
+  'plans.templates.preview': 'Preview\n1. Preview next lesson\n2. Organize notes\n3. Practice exercises',
+  'plans.templates.morning': 'Morning Routine\n1. Morning reading 30 min\n2. Online course\n3. Review weekly key points',
+  
+  // Recycle page
+  'recycle.confirmClearAll': 'Are you sure you want to clear all? This action cannot be undone.',
+  
+  // Dashboard
+  'dashboard.noDeadline': 'No deadline',
+  'dashboard.createJourney': 'Create a new study task to start your learning journey',
 };
 
 const translations = { 'zh-CN': zh, 'en': en };
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('zh-CN');
+  const [language, setLanguageState] = useState<Language>('en');
 
   useEffect(() => {
-    // Load saved language preference
+    // Load saved language preference first
     const saved = localStorage.getItem('language') as Language;
-    if (saved) {
+    if (saved && (saved === 'zh-CN' || saved === 'en')) {
       setLanguageState(saved);
+      return;
+    }
+    
+    // Detect browser language and default to English
+    const browserLang = navigator.language || 'en';
+    if (browserLang.startsWith('zh')) {
+      setLanguageState('zh-CN');
+    } else {
+      setLanguageState('en');
     }
   }, []);
 

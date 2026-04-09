@@ -39,7 +39,7 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
 
   return (
     <aside
-      className={`hidden lg:flex flex-col h-screen bg-card border-r transition-all duration-300 ${
+      className={`hidden lg:sticky lg:top-0 lg:flex flex-col h-screen bg-card border-r transition-all duration-300 ${
         collapsed ? 'w-20' : 'w-64'
       }`}
     >

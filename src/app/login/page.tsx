@@ -90,7 +90,7 @@ export default function LoginPage() {
             StudyFlow
           </h1>
           <p className="text-muted-foreground mt-2">
-            {language === 'zh-CN' ? '智能学习助手，让进步看得见' : 'Smart Study Assistant, Track Your Progress'}
+            {t('login.tagline')}
           </p>
         </div>
 
@@ -117,7 +117,7 @@ export default function LoginPage() {
                     <Label htmlFor="login-username">{t('auth.username')}</Label>
                     <Input
                       id="login-username"
-                      placeholder={language === 'zh-CN' ? '请输入用户名' : 'Enter username'}
+                      placeholder={t('login.enterUsername')}
                       value={loginUsername}
                       onChange={(e) => setLoginUsername(e.target.value)}
                       required
@@ -128,7 +128,7 @@ export default function LoginPage() {
                     <Input
                       id="login-password"
                       type="password"
-                      placeholder={language === 'zh-CN' ? '请输入密码' : 'Enter password'}
+                      placeholder={t('login.enterPassword')}
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       required
@@ -169,18 +169,18 @@ export default function LoginPage() {
                     <Label htmlFor="reg-username">{t('auth.username')} *</Label>
                     <Input
                       id="reg-username"
-                      placeholder={language === 'zh-CN' ? '请输入用户名' : 'Enter username'}
+                      placeholder={t('login.enterUsername')}
                       value={regUsername}
                       onChange={(e) => setRegUsername(e.target.value)}
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="reg-email">{t('auth.email')} ({language === 'zh-CN' ? '选填' : 'Optional'})</Label>
+                    <Label htmlFor="reg-email">{t('auth.email')} ({t('login.optional')})</Label>
                     <Input
                       id="reg-email"
                       type="email"
-                      placeholder={language === 'zh-CN' ? '请输入邮箱' : 'Enter email'}
+                      placeholder={t('login.enterEmail')}
                       value={regEmail}
                       onChange={(e) => setRegEmail(e.target.value)}
                     />
@@ -190,7 +190,7 @@ export default function LoginPage() {
                     <Input
                       id="reg-password"
                       type="password"
-                      placeholder={language === 'zh-CN' ? '请输入密码（至少6位）' : 'Enter password (min 6 characters)'}
+                      placeholder={t('login.enterPasswordMin')}
                       value={regPassword}
                       onChange={(e) => setRegPassword(e.target.value)}
                       required

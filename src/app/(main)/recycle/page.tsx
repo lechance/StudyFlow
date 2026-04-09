@@ -79,15 +79,13 @@ export default function RecyclePage() {
               <AlertDialogHeader>
                 <AlertDialogTitle>{t('recycle.confirmDelete')}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {language === 'zh-CN' 
-                    ? '清空后所有任务将无法恢复，确定要清空吗？'
-                    : 'All tasks will be permanently deleted and cannot be recovered. Are you sure?'}
+                  {t('recycle.confirmClearAll')}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                 <AlertDialogAction onClick={handleClearAll} className="bg-destructive">
-                  {clearing ? (language === 'zh-CN' ? '清空中...' : 'Clearing...') : t('common.confirm')}
+                  {clearing ? t('common.clearing') : t('common.confirm')}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -151,18 +149,18 @@ export default function RecyclePage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium line-through text-muted-foreground">
-                        {task?.title || (language === 'zh-CN' ? '未知任务' : 'Unknown Task')}
+                        {task?.title || t('common.unknown')}
                       </span>
-                      <Badge variant="outline">{task?.category || (language === 'zh-CN' ? '其他' : 'Other')}</Badge>
+                      <Badge variant="outline">{task?.category ? t(`category.${task.category}`) : t('common.other')}</Badge>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {t('recycle.deletedAt', { date: format(new Date(item.deleted_at), language === 'zh-CN' ? 'yyyy-MM-dd HH:mm' : 'yyyy-MM-dd HH:mm') })}
+                        {t('recycle.deletedAt', { date: format(new Date(item.deleted_at), 'yyyy-MM-dd HH:mm') })}
                       </span>
                       {task?.deadline && (
                         <span>
-                          {language === 'zh-CN' ? '截止: ' : 'Due: '}{format(new Date(task.deadline), language === 'zh-CN' ? 'yyyy-MM-dd' : 'yyyy-MM-dd')}
+                          {t('common.due')}: {format(new Date(task.deadline), 'yyyy-MM-dd')}
                         </span>
                       )}
                     </div>
