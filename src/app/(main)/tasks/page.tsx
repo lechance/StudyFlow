@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useTasks } from '@/hooks/useTasks';
+import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,29 +54,31 @@ import {
   Circle,
   PlayCircle,
   Sparkles,
-  Filter,
-  SortAsc,
   ListTodo,
   X,
-  ChevronDown,
-  ChevronUp,
   Pin,
   PinOff,
   Flame,
-  Target
+  Target,
+  ChevronRight,
+  TrendingUp,
+  CheckCircle,
+  AlertCircle,
+  CalendarDays,
+  Timer
 } from 'lucide-react';
 import { api } from '@/lib/api';
-import { format, differenceInDays, isPast, isToday, isTomorrow, addDays, startOfWeek, endOfWeek, isSameWeek } from 'date-fns';
-import { toast } from 'sonner';
 import { tasksApi } from '@/lib/api';
+import { format, differenceInDays, isPast, isToday, isTomorrow, addDays } from 'date-fns';
+import { toast } from 'sonner';
 
-const PRIORITY_CONFIG: Record<string, { labelKey: string; textColor: string }> = {
-  high: { labelKey: 'priority.high', textColor: 'text-red-500' },
-  medium: { labelKey: 'priority.medium', textColor: 'text-yellow-500' },
-  low: { labelKey: 'priority.low', textColor: 'text-green-500' },
+const PRIORITY_CONFIG: Record<string, { labelKey: string; textColor: string; bgColor: string }> = {
+  high: { labelKey: 'priority.high', textColor: 'text-red-600', bgColor: 'bg-red-50 dark:bg-red-950/30' },
+  medium: { labelKey: 'priority.medium', textColor: 'text-yellow-600', bgColor: 'bg-yellow-50 dark:bg-yellow-950/30' },
+  low: { labelKey: 'priority.low', textColor: 'text-green-600', bgColor: 'bg-green-50 dark:bg-green-950/30' },
 };
 
-type ViewTab = 'all' | 'today' | 'week';
+type ViewTab = 'today' | 'week' | 'all';
 
 export default function TasksPage() {
   const { user } = useAuth();
@@ -84,36 +87,19 @@ export default function TasksPage() {
   
   // View state
   const [activeTab, setActiveTab] = useState<ViewTab>('today');
-  const [todayCollapsed, setTodayCollapsed] = useState(false);
-  
-  // Get category and priority translations
-  const getCategoryLabel = (cat: string) => {
-    return t(`category.${cat}`) || cat;
-  };
-  
-  const getPriorityLabel = (priority: string) => {
-    return t(PRIORITY_CONFIG[priority]?.labelKey || 'priority.medium');
-  };
   
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
-  const [showQuickAddDialog, setShowQuickAddDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
   const [detailTask, setDetailTask] = useState<any>(null);
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'priority' | 'deadline'>('priority');
-  
-  // Quick add for today/week
-  const [quickAddTarget, setQuickAddTarget] = useState<{ type: 'today' | 'week'; taskId?: string } | null>(null);
   
   // Subtask state
   const [subtasks, setSubtasks] = useState<any[]>([]);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
 
-  // New task form - use category keys that can be translated
+  // New task form
   const [newTask, setNewTask] = useState({
     title: '',
     category: 'study',
@@ -123,7 +109,7 @@ export default function TasksPage() {
     estimated_time: ''
   });
 
-  // Category keys for form options
+  // Category keys
   const categoryKeys = ['study', 'work', 'reading', 'exercise', 'other'];
 
   // Today's date string
@@ -149,61 +135,67 @@ export default function TasksPage() {
     const total = todayTasks.length;
     const completed = todayTasks.filter(t => t.status === 'completed').length;
     const pending = todayTasks.filter(t => t.status !== 'completed').length;
-    return { total, completed, pending, progress: total > 0 ? Math.round((completed / total) * 100) : 0 };
+    
+    // Calculate subtask stats
+    let subtaskTotal = 0;
+    let subtaskCompleted = 0;
+    todayTasks.forEach(task => {
+      subtaskTotal += task.subtask_total || 0;
+      subtaskCompleted += task.subtask_completed || 0;
+    });
+    
+    return { 
+      total, 
+      completed, 
+      pending, 
+      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
+      subtaskTotal,
+      subtaskCompleted,
+      subtaskProgress: subtaskTotal > 0 ? Math.round((subtaskCompleted / subtaskTotal) * 100) : 0
+    };
   }, [todayTasks]);
 
   const weekStats = useMemo(() => {
     const total = weekTasks.length;
     const completed = weekTasks.filter(t => t.status === 'completed').length;
-    return { total, completed, progress: total > 0 ? Math.round((completed / total) * 100) : 0 };
+    
+    let subtaskTotal = 0;
+    let subtaskCompleted = 0;
+    weekTasks.forEach(task => {
+      subtaskTotal += task.subtask_total || 0;
+      subtaskCompleted += task.subtask_completed || 0;
+    });
+    
+    return { 
+      total, 
+      completed, 
+      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
+      subtaskTotal,
+      subtaskCompleted,
+      subtaskProgress: subtaskTotal > 0 ? Math.round((subtaskCompleted / subtaskTotal) * 100) : 0
+    };
   }, [weekTasks]);
 
-  // Filter and sort tasks
-  const filteredTasks = useMemo(() => {
-    let result = [...tasks];
-    
-    // Filter by view tab
-    if (activeTab === 'today') {
-      result = todayTasks;
-    } else if (activeTab === 'week') {
-      result = weekTasks;
-    }
-    
-    // Additional filter
-    if (filterStatus !== 'all') {
-      result = result.filter(t => t.status === filterStatus);
-    }
-    if (filterCategory !== 'all') {
-      result = result.filter(t => t.category === filterCategory);
-    }
-    
-    // Sort
-    if (sortBy === 'priority') {
-      result.sort((a, b) => {
-        const priorityOrder = { high: 1, medium: 2, low: 3 };
-        return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
-      });
-    } else {
-      result.sort((a, b) => {
-        const dateA = a.plan_date || a.deadline;
-        const dateB = b.plan_date || b.deadline;
-        if (!dateA) return 1;
-        if (!dateB) return -1;
-        return new Date(dateA).getTime() - new Date(dateB).getTime();
-      });
-    }
-    
-    return result;
-  }, [tasks, activeTab, todayTasks, weekTasks, filterStatus, filterCategory, sortBy]);
-
-  // Overall stats
-  const stats = useMemo(() => {
+  const overallStats = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter(t => t.status === 'completed').length;
     const inProgress = tasks.filter(t => t.status === 'in_progress').length;
     const pending = tasks.filter(t => t.status === 'pending').length;
     const highPriority = tasks.filter(t => t.priority === 'high' && t.status !== 'completed').length;
-    return { total, completed, inProgress, pending, highPriority };
+    
+    let subtaskTotal = 0;
+    let subtaskCompleted = 0;
+    tasks.forEach(task => {
+      subtaskTotal += task.subtask_total || 0;
+      subtaskCompleted += task.subtask_completed || 0;
+    });
+    
+    return { total, completed, inProgress, pending, highPriority, subtaskTotal, subtaskCompleted };
+  }, [tasks]);
+
+  // Get tasks not in any plan
+  const unPlannedTasks = useMemo(() => {
+    return tasks.filter(task => !task.plan_date && task.status !== 'completed');
   }, [tasks]);
 
   // Fetch tasks when tab changes
@@ -242,7 +234,6 @@ export default function TasksPage() {
         await fetchTasks();
       }
     } catch (error) {
-      console.error('Failed to toggle subtask:', error);
       toast.error(t('common.error'));
     }
   };
@@ -261,7 +252,6 @@ export default function TasksPage() {
         toast.success(t('common.success'));
       }
     } catch (error) {
-      console.error('Failed to add subtask:', error);
       toast.error(t('common.error'));
     }
   };
@@ -275,7 +265,6 @@ export default function TasksPage() {
         toast.success(t('common.success'));
       }
     } catch (error) {
-      console.error('Failed to delete subtask:', error);
       toast.error(t('common.error'));
     }
   };
@@ -286,14 +275,9 @@ export default function TasksPage() {
       return;
     }
 
-    // Auto-set plan_date based on current tab
     let planDate = newTask.plan_date;
     if (!planDate) {
-      if (activeTab === 'today') {
-        planDate = todayStr;
-      } else if (activeTab === 'week') {
-        planDate = todayStr; // Default to today for week view
-      }
+      if (activeTab === 'today') planDate = todayStr;
     }
 
     const success = await addTask({
@@ -318,8 +302,6 @@ export default function TasksPage() {
         estimated_time: '' 
       });
       await fetchTasks();
-    } else {
-      toast.error(t('common.error'));
     }
   };
 
@@ -328,11 +310,9 @@ export default function TasksPage() {
     try {
       let planDate = todayStr;
       if (targetType === 'week') {
-        // Find the next available day in the week
-        const today = new Date();
-        const weekEnd = addDays(today, 7);
+        const weekEnd = addDays(new Date(), 7);
         for (let i = 0; i <= 7; i++) {
-          const checkDate = addDays(today, i);
+          const checkDate = addDays(new Date(), i);
           const dateStr = format(checkDate, 'yyyy-MM-dd');
           const hasTaskOnDate = weekTasks.some(t => t.plan_date === dateStr);
           if (!hasTaskOnDate) {
@@ -348,7 +328,6 @@ export default function TasksPage() {
         await fetchTasks();
       }
     } catch (error) {
-      console.error('Failed to add to plan:', error);
       toast.error(t('common.error'));
     }
   };
@@ -362,7 +341,6 @@ export default function TasksPage() {
         await fetchTasks();
       }
     } catch (error) {
-      console.error('Failed to remove from plan:', error);
       toast.error(t('common.error'));
     }
   };
@@ -384,8 +362,6 @@ export default function TasksPage() {
       setShowEditDialog(false);
       setEditingTask(null);
       await fetchTasks();
-    } else {
-      toast.error(t('common.error'));
     }
   };
 
@@ -411,6 +387,7 @@ export default function TasksPage() {
     await fetchTasks();
   };
 
+  // Get deadline info
   const getDeadlineInfo = (task: any) => {
     const deadline = task.deadline || task.plan_date;
     if (!deadline) return null;
@@ -418,52 +395,237 @@ export default function TasksPage() {
     const deadlineDate = new Date(deadline);
     const isTodayDate = isToday(deadlineDate);
     const isTomorrowDate = isTomorrow(deadlineDate);
+    const isPastDate = isPast(deadlineDate);
     const days = differenceInDays(deadlineDate, new Date());
     
-    if (isPast(deadlineDate) && !isTodayDate) {
+    if (isPastDate && !isTodayDate) {
       return { 
         text: t('tasks.overdue', { days: Math.abs(days) }), 
-        color: 'text-red-500', 
+        color: 'text-red-600 bg-red-50 dark:bg-red-950/30',
+        borderColor: 'border-red-300',
         urgent: true,
-        label: isTodayDate ? t('tasks.today') : t('tasks.overdue', { days: Math.abs(days) })
+        icon: <AlertCircle className="w-3 h-3" />
       };
     }
     if (isTodayDate) {
       return { 
-        text: t('tasks.today'), 
-        color: 'text-orange-500', 
+        text: t('tasks.today'),
+        color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/30',
+        borderColor: 'border-orange-300',
         urgent: true,
-        label: t('tasks.today')
+        icon: <Clock className="w-3 h-3" />
       };
     }
     if (isTomorrowDate) {
       return { 
         text: t('tasks.tomorrow'),
-        color: 'text-yellow-500',
+        color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-950/30',
+        borderColor: 'border-yellow-300',
         urgent: false,
-        label: t('tasks.tomorrow')
+        icon: <Calendar className="w-3 h-3" />
       };
     }
     if (days <= 3) {
       return { 
         text: t('tasks.daysLeft', { days }), 
-        color: 'text-orange-500', 
+        color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/30',
+        borderColor: 'border-orange-300',
         urgent: true,
-        label: t('tasks.daysLeft', { days })
+        icon: <Clock className="w-3 h-3" />
       };
     }
     return { 
       text: format(deadlineDate, 'MM/dd'),
-      color: 'text-muted-foreground', 
+      color: 'text-muted-foreground bg-muted/50',
+      borderColor: 'border-muted',
       urgent: false,
-      label: format(deadlineDate, 'MM/dd')
+      icon: <Calendar className="w-3 h-3" />
     };
   };
 
-  // Get tasks not in any plan
-  const unPlannedTasks = useMemo(() => {
-    return tasks.filter(task => !task.plan_date && task.status !== 'completed');
-  }, [tasks]);
+  // Render task card with detailed info
+  const renderTaskCard = (task: any, showPlanInfo: boolean = false, isTodayTask: boolean = false) => {
+    const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
+    const hasSubtasks = (task.subtask_total || 0) > 0;
+    const subtaskProgress = task.subtask_progress || 0;
+    const deadlineInfo = getDeadlineInfo(task);
+    const isCompleted = task.status === 'completed';
+
+    return (
+      <Card
+        key={task.id}
+        className={`card-hover transition-all ${isCompleted ? 'opacity-60' : ''} ${
+          deadlineInfo?.urgent ? `border ${deadlineInfo.borderColor}` : ''
+        }`}
+      >
+        <CardContent className="p-4">
+          {/* Header Row */}
+          <div className="flex items-start gap-3 mb-3">
+            <Checkbox
+              checked={isCompleted}
+              onCheckedChange={(checked) => handleStatusChange(task.id, checked ? 'completed' : 'pending')}
+              className="mt-1 w-5 h-5"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                {isTodayTask && (
+                  <Badge className="bg-primary text-xs">{t('tasks.today')}</Badge>
+                )}
+                <span className={`font-semibold text-base ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                  {task.title}
+                </span>
+              </div>
+              
+              {/* Meta Info Row */}
+              <div className="flex items-center gap-3 flex-wrap text-sm">
+                <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs`}>
+                  {t(priorityConfig?.labelKey || 'priority.medium')}
+                </Badge>
+                <Badge variant="secondary" className="text-xs">
+                  {t(`category.${task.category}`)}
+                </Badge>
+                {task.estimated_time && (
+                  <span className="flex items-center gap-1 text-muted-foreground text-xs">
+                    <Timer className="w-3 h-3" />
+                    {task.estimated_time}{t('common.minutes')}
+                  </span>
+                )}
+              </div>
+            </div>
+            
+            {/* Quick Actions */}
+            <div className="flex items-center gap-1">
+              {!task.plan_date && !isCompleted && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleQuickAddToPlan(task.id, 'today')}
+                  title={t('tasks.addToToday')}
+                >
+                  <Pin className="w-4 h-4 text-primary" />
+                </Button>
+              )}
+              {task.plan_date && !isCompleted && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleRemoveFromPlan(task.id)}
+                  title={t('tasks.removeFromPlan')}
+                >
+                  <PinOff className="w-4 h-4 text-muted-foreground" />
+                </Button>
+              )}
+              {!isCompleted && task.status !== 'in_progress' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleStatusChange(task.id, 'in_progress')}
+                  title={t('common.startTask')}
+                >
+                  <PlayCircle className="w-4 h-4 text-cyan-500" />
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  setEditingTask(task);
+                  setShowEditDialog(true);
+                }}
+                title={t('common.edit')}
+              >
+                <Edit2 className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 hover:text-destructive"
+                onClick={() => handleDeleteTask(task.id)}
+                title={t('common.delete')}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Deadline & Plan Info */}
+          {showPlanInfo && (
+            <div className="flex items-center gap-4 mb-3 px-1">
+              {deadlineInfo && (
+                <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${deadlineInfo.color}`}>
+                  {deadlineInfo.icon}
+                  <span>{t('tasks.deadline')}: {deadlineInfo.text}</span>
+                </div>
+              )}
+              {task.plan_date && (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">
+                  <CalendarDays className="w-3 h-3" />
+                  <span>{t('tasks.planDate')}: {format(new Date(task.plan_date), 'MM/dd')}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Subtasks Progress */}
+          {hasSubtasks && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <ListTodo className="w-4 h-4 text-blue-500" />
+                  <span>{t('tasks.subtasks')}</span>
+                  <span className="text-muted-foreground">
+                    {task.subtask_completed || 0}/{task.subtask_total || 0}
+                  </span>
+                </div>
+                <span className="font-medium text-blue-600">{subtaskProgress}%</span>
+              </div>
+              <Progress value={subtaskProgress} className="h-2" />
+              
+              {/* Subtask Preview */}
+              {task.subtasks && task.subtasks.length > 0 && (
+                <div className="pl-4 space-y-1 mt-2">
+                  {task.subtasks.slice(0, 3).map((subtask: any) => (
+                    <div key={subtask.id} className="flex items-center gap-2 text-sm">
+                      {subtask.completed ? (
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                      ) : (
+                        <Circle className="w-3 h-3 text-muted-foreground" />
+                      )}
+                      <span className={subtask.completed ? 'line-through text-muted-foreground' : ''}>
+                        {subtask.title}
+                      </span>
+                    </div>
+                  ))}
+                  {task.subtasks.length > 3 && (
+                    <Button
+                      variant="link"
+                      className="text-xs text-blue-500 p-0 h-auto"
+                      onClick={() => openTaskDetail(task)}
+                    >
+                      +{task.subtasks.length - 3} {t('tasks.moreTasks')}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Click to view details */}
+          <Button
+            variant="ghost"
+            className="w-full mt-2 text-xs text-muted-foreground"
+            onClick={() => openTaskDetail(task)}
+          >
+            {t('common.viewDetails')} <ChevronRight className="w-3 h-3 ml-1" />
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
 
   if (loading) {
     return (
@@ -525,24 +687,9 @@ export default function TasksPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="high">
-                        <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-red-500" />
-                          {t('priority.high')}
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="medium">
-                        <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-yellow-500" />
-                          {t('priority.medium')}
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="low">
-                        <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-green-500" />
-                          {t('priority.low')}
-                        </span>
-                      </SelectItem>
+                      <SelectItem value="high">{t('priority.high')}</SelectItem>
+                      <SelectItem value="medium">{t('priority.medium')}</SelectItem>
+                      <SelectItem value="low">{t('priority.low')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -584,222 +731,160 @@ export default function TasksPage() {
         </Dialog>
       </div>
 
-      {/* Stats Cards - Quick Overview */}
-      <div className="grid grid-cols-3 lg:grid-cols-6 gap-4">
-        <Card className="card-hover bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-200 dark:border-blue-800">
-          <CardContent className="pt-4 text-center">
-            <div className="w-10 h-10 rounded-lg bg-blue-500/20 mx-auto mb-2 flex items-center justify-center">
-              <Target className="w-5 h-5 text-blue-500" />
+      {/* Overview Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-200 dark:border-blue-800">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <Target className="w-6 h-6 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{overallStats.total}</p>
+                <p className="text-xs text-muted-foreground">{t('tasks.total')}</p>
+              </div>
             </div>
-            <p className="text-2xl font-bold">{stats.total}</p>
-            <p className="text-xs text-muted-foreground">{t('tasks.total')}</p>
           </CardContent>
         </Card>
-        <Card className="card-hover">
-          <CardContent className="pt-4 text-center">
-            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 mx-auto mb-2 flex items-center justify-center">
-              <Flame className="w-5 h-5 text-emerald-500" />
+        
+        <Card className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-200 dark:border-emerald-800">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{overallStats.completed}</p>
+                <p className="text-xs text-muted-foreground">{t('tasks.completed')}</p>
+              </div>
             </div>
-            <p className="text-2xl font-bold">{todayStats.progress}%</p>
-            <p className="text-xs text-muted-foreground">{t('tasks.todayProgress')}</p>
           </CardContent>
         </Card>
-        <Card className="card-hover">
-          <CardContent className="pt-4 text-center">
-            <div className="w-10 h-10 rounded-lg bg-orange-500/10 mx-auto mb-2 flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-orange-500" />
+        
+        <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-200 dark:border-purple-800">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                <ListTodo className="w-6 h-6 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{overallStats.subtaskTotal > 0 
+                  ? `${overallStats.subtaskCompleted}/${overallStats.subtaskTotal}` 
+                  : '-'}
+                </p>
+                <p className="text-xs text-muted-foreground">{t('tasks.subtasks')}</p>
+              </div>
             </div>
-            <p className="text-2xl font-bold">{todayStats.total}</p>
-            <p className="text-xs text-muted-foreground">{t('tasks.todayPlan')}</p>
           </CardContent>
         </Card>
-        <Card className="card-hover">
-          <CardContent className="pt-4 text-center">
-            <div className="w-10 h-10 rounded-lg bg-emerald-500/10 mx-auto mb-2 flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+        
+        <Card className="bg-gradient-to-br from-red-500/10 to-orange-500/10 border-red-200 dark:border-red-800">
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-red-500/20 flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-red-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{overallStats.highPriority}</p>
+                <p className="text-xs text-muted-foreground">{t('tasks.highPriority')}</p>
+              </div>
             </div>
-            <p className="text-2xl font-bold">{todayStats.completed}</p>
-            <p className="text-xs text-muted-foreground">{t('tasks.completed')}</p>
-          </CardContent>
-        </Card>
-        <Card className="card-hover">
-          <CardContent className="pt-4 text-center">
-            <div className="w-10 h-10 rounded-lg bg-purple-500/10 mx-auto mb-2 flex items-center justify-center">
-              <ListTodo className="w-5 h-5 text-purple-500" />
-            </div>
-            <p className="text-2xl font-bold">{weekStats.total}</p>
-            <p className="text-xs text-muted-foreground">{t('tasks.weekPlan')}</p>
-          </CardContent>
-        </Card>
-        <Card className="card-hover border-red-200 bg-red-50/50 dark:bg-red-950/20">
-          <CardContent className="pt-4 text-center">
-            <div className="w-10 h-10 rounded-lg bg-red-500/10 mx-auto mb-2 flex items-center justify-center">
-              <Clock className="w-5 h-5 text-red-500" />
-            </div>
-            <p className="text-2xl font-bold">{stats.highPriority}</p>
-            <p className="text-xs text-muted-foreground">{t('tasks.highPriority')}</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Tab Navigation */}
       <Tabs defaultValue="today" value={activeTab} onValueChange={(v) => setActiveTab(v as ViewTab)}>
-        <div className="flex items-center justify-between">
-          <TabsList className="grid w-full max-w-[400px] grid-cols-3">
-            <TabsTrigger value="today" className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              {t('tasks.todayPlan')}
-            </TabsTrigger>
-            <TabsTrigger value="week" className="flex items-center gap-2">
-              <ListTodo className="w-4 h-4" />
-              {t('tasks.weekPlan')}
-            </TabsTrigger>
-            <TabsTrigger value="all" className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4" />
-              {t('tasks.allTasks')}
-            </TabsTrigger>
-          </TabsList>
-          
-          {/* Filter and Sort - Only show for all tasks */}
-          {activeTab === 'all' && (
-            <div className="flex items-center gap-2">
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-28">
-                  <SelectValue placeholder={t('common.status')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('tasks.allStatus')}</SelectItem>
-                  <SelectItem value="pending">{t('tasks.pending')}</SelectItem>
-                  <SelectItem value="in_progress">{t('tasks.inProgress')}</SelectItem>
-                  <SelectItem value="completed">{t('tasks.completed')}</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-28">
-                  <SelectValue placeholder={t('common.category')} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('tasks.allCategory')}</SelectItem>
-                  {categoryKeys.map((key) => (
-                    <SelectItem key={key} value={key}>{t(`category.${key}`)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select value={sortBy} onValueChange={(v: 'priority' | 'deadline') => setSortBy(v)}>
-                <SelectTrigger className="w-28">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="priority">{t('tasks.byPriority')}</SelectItem>
-                  <SelectItem value="deadline">{t('tasks.byDeadline')}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-        </div>
+        <TabsList className="grid w-full max-w-[500px] grid-cols-3">
+          <TabsTrigger value="today" className="flex items-center gap-2">
+            <Calendar className="w-4 h-4" />
+            {t('tasks.todayPlan')}
+          </TabsTrigger>
+          <TabsTrigger value="week" className="flex items-center gap-2">
+            <CalendarDays className="w-4 h-4" />
+            {t('tasks.weekPlan')}
+          </TabsTrigger>
+          <TabsTrigger value="all" className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4" />
+            {t('tasks.allTasks')}
+          </TabsTrigger>
+        </TabsList>
 
         {/* Today Plan Tab */}
         <TabsContent value="today" className="space-y-4 mt-4">
           {/* Today Progress Card */}
-          <Card className="bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 border-emerald-200 dark:border-emerald-800">
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                    <Target className="w-6 h-6 text-emerald-500" />
+          <Card className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 border-emerald-200 dark:border-emerald-800">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                    <Target className="w-7 h-7 text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">{t('tasks.todayPlan')}</h3>
-                    <p className="text-sm text-muted-foreground">{format(new Date(), 'yyyy-MM-dd')} {t('tasks.today')}</p>
+                    <h3 className="font-semibold text-xl">{t('tasks.todayPlan')}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(), 'yyyy-MM-dd')} · {todayStats.total} {t('tasks.tasks')}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl font-bold text-emerald-500">{todayStats.progress}%</p>
-                  <p className="text-sm text-muted-foreground">{todayStats.completed}/{todayStats.total} {t('tasks.completed')}</p>
+                  <p className="text-4xl font-bold text-emerald-600">{todayStats.progress}%</p>
+                  <p className="text-sm text-muted-foreground">{todayStats.completed}/{todayStats.total}</p>
                 </div>
               </div>
-              <Progress value={todayStats.progress} className="h-3" />
+              
+              {/* Progress Bars */}
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>{t('tasks.taskProgress')}</span>
+                    <span className="text-emerald-600">{todayStats.completed}/{todayStats.total}</span>
+                  </div>
+                  <Progress value={todayStats.progress} className="h-3" />
+                </div>
+                {todayStats.subtaskTotal > 0 && (
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="flex items-center gap-1">
+                        <ListTodo className="w-3 h-3" />
+                        {t('tasks.subtaskProgress')}
+                      </span>
+                      <span className="text-blue-600">{todayStats.subtaskCompleted}/{todayStats.subtaskTotal}</span>
+                    </div>
+                    <Progress value={todayStats.subtaskProgress} className="h-2 bg-muted" />
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
           {/* Today's Tasks */}
-          <Card>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ListTodo className="w-4 h-4" />
-                  {t('tasks.todayTasks')} ({todayTasks.length})
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {todayTasks.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+          <div className="space-y-3">
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              <ListTodo className="w-5 h-5" />
+              {t('tasks.todayTasks')} ({todayTasks.length})
+            </h3>
+            
+            {todayTasks.length === 0 ? (
+              <Card className="py-8">
+                <CardContent className="text-center text-muted-foreground">
                   <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p>{t('tasks.noTodayTasks')}</p>
                   <p className="text-sm">{t('tasks.addTodayTask')}</p>
-                </div>
-              ) : (
-                todayTasks.map((task) => {
-                  const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
-                  const hasSubtasks = (task.subtask_total || 0) > 0;
-                  
-                  return (
-                    <div 
-                      key={task.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border transition-all hover:shadow-sm ${task.status === 'completed' ? 'opacity-60 bg-muted/30' : 'bg-card'}`}
-                    >
-                      <Checkbox
-                        checked={task.status === 'completed'}
-                        onCheckedChange={(checked) => handleStatusChange(task.id, checked ? 'completed' : 'pending')}
-                        className="w-5 h-5"
-                      />
-                      <div 
-                        className="flex-1 min-w-0 cursor-pointer" 
-                        onClick={() => openTaskDetail(task)}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
-                            {task.title}
-                          </span>
-                          <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs`}>
-                            {t(priorityConfig?.labelKey || 'priority.medium')}
-                          </Badge>
-                          {hasSubtasks && (
-                            <Badge variant="secondary" className="text-xs">
-                              {task.subtask_completed || 0}/{task.subtask_total || 0}
-                            </Badge>
-                          )}
-                        </div>
-                        {hasSubtasks && (
-                          <Progress value={task.subtask_progress || 0} className="h-1.5" />
-                        )}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveFromPlan(task.id);
-                        }}
-                        title={t('tasks.removeFromPlan')}
-                      >
-                        <PinOff className="w-4 h-4 text-muted-foreground" />
-                      </Button>
-                    </div>
-                  );
-                })
-              )}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            ) : (
+              todayTasks.map((task) => renderTaskCard(task, true, true))
+            )}
+          </div>
 
-          {/* Unplanned Tasks Quick Add */}
+          {/* Quick Add Section */}
           {unPlannedTasks.length > 0 && (
-            <Card>
+            <Card className="border-dashed border-2 bg-muted/30">
               <CardHeader className="pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  {t('tasks.addToToday')} ({unPlannedTasks.length})
+                  <Sparkles className="w-5 h-5 text-amber-500" />
+                  {t('tasks.quickAddToPlan')} ({unPlannedTasks.length})
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -808,20 +893,28 @@ export default function TasksPage() {
                   return (
                     <div 
                       key={task.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg bg-card border hover:shadow-sm transition-shadow"
                     >
-                      <Circle className="w-4 h-4 text-muted-foreground" />
+                      <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <span className="font-medium truncate">{task.title}</span>
-                        <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs ml-2`}>
-                          {t(priorityConfig?.labelKey || 'priority.medium')}
-                        </Badge>
+                        <span className="font-medium truncate block">{task.title}</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs py-0`}>
+                            {t(priorityConfig?.labelKey || 'priority.medium')}
+                          </Badge>
+                          {(task.subtask_total || 0) > 0 && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <ListTodo className="w-3 h-3" />
+                              {task.subtask_completed || 0}/{task.subtask_total || 0}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <Button
                         size="sm"
                         variant="outline"
+                        className="flex items-center gap-1 flex-shrink-0"
                         onClick={() => handleQuickAddToPlan(task.id, 'today')}
-                        className="flex items-center gap-1"
                       >
                         <Pin className="w-3 h-3" />
                         {t('tasks.addToToday')}
@@ -841,149 +934,209 @@ export default function TasksPage() {
 
         {/* Week Plan Tab */}
         <TabsContent value="week" className="space-y-4 mt-4">
-          {/* Week Overview Card */}
-          <Card className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-200 dark:border-purple-800">
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center">
-                    <ListTodo className="w-6 h-6 text-purple-500" />
+          {/* Week Progress Card */}
+          <Card className="bg-gradient-to-r from-purple-500/10 via-violet-500/10 to-pink-500/10 border-purple-200 dark:border-purple-800">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                    <CalendarDays className="w-7 h-7 text-purple-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">{t('tasks.weekPlan')}</h3>
+                    <h3 className="font-semibold text-xl">{t('tasks.weekPlan')}</h3>
                     <p className="text-sm text-muted-foreground">
                       {format(new Date(), 'MM/dd')} - {format(addDays(new Date(), 7), 'MM/dd')}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-3xl font-bold text-purple-500">{weekStats.progress}%</p>
-                  <p className="text-sm text-muted-foreground">{weekStats.completed}/{weekStats.total} {t('tasks.completed')}</p>
+                  <p className="text-4xl font-bold text-purple-600">{weekStats.progress}%</p>
+                  <p className="text-sm text-muted-foreground">{weekStats.completed}/{weekStats.total}</p>
                 </div>
               </div>
-              <Progress value={weekStats.progress} className="h-3" />
+              
+              {/* Progress Bars */}
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>{t('tasks.taskProgress')}</span>
+                    <span className="text-purple-600">{weekStats.completed}/{weekStats.total}</span>
+                  </div>
+                  <Progress value={weekStats.progress} className="h-3" />
+                </div>
+                {weekStats.subtaskTotal > 0 && (
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="flex items-center gap-1">
+                        <ListTodo className="w-3 h-3" />
+                        {t('tasks.subtaskProgress')}
+                      </span>
+                      <span className="text-blue-600">{weekStats.subtaskCompleted}/{weekStats.subtaskTotal}</span>
+                    </div>
+                    <Progress value={weekStats.subtaskProgress} className="h-2 bg-muted" />
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
-          {/* Week Day Cards */}
-          <div className="grid grid-cols-7 gap-2">
-            {[0, 1, 2, 3, 4, 5, 6].map((dayOffset) => {
-              const date = addDays(new Date(), dayOffset);
-              const dateStr = format(date, 'yyyy-MM-dd');
-              const dayTasks = weekTasks.filter(t => t.plan_date === dateStr);
-              const completedCount = dayTasks.filter(t => t.status === 'completed').length;
-              const isTodayDate = dayOffset === 0;
-              
-              return (
-                <Card 
-                  key={dayOffset}
-                  className={`text-center ${isTodayDate ? 'ring-2 ring-primary' : ''}`}
-                >
-                  <CardContent className="pt-3 pb-2">
-                    <p className="text-xs text-muted-foreground">{format(date, 'EEE')}</p>
-                    <p className={`text-lg font-bold ${isTodayDate ? 'text-primary' : ''}`}>{format(date, 'd')}</p>
-                    <div className="mt-1">
-                      {dayTasks.length > 0 ? (
-                        <div className={`text-xs font-medium ${completedCount === dayTasks.length ? 'text-emerald-500' : 'text-muted-foreground'}`}>
-                          {completedCount}/{dayTasks.length}
-                        </div>
-                      ) : (
-                        <div className="text-xs text-muted-foreground">-</div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-
-          {/* Week Tasks List */}
+          {/* Week Calendar View */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                {t('tasks.weekTasks')} ({weekTasks.length})
+                <TrendingUp className="w-5 h-5" />
+                {t('tasks.weekOverview')}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {weekTasks.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>{t('tasks.noWeekTasks')}</p>
-                  <p className="text-sm">{t('tasks.addWeekTask')}</p>
-                </div>
-              ) : (
-                weekTasks
-                  .sort((a, b) => {
-                    if (!a.plan_date) return 1;
-                    if (!b.plan_date) return -1;
-                    return a.plan_date.localeCompare(b.plan_date);
-                  })
-                  .map((task) => {
-                    const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
-                    const deadlineInfo = getDeadlineInfo(task);
-                    const isTodayTask = task.plan_date === todayStr;
-                    
-                    return (
-                      <div 
-                        key={task.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border transition-all hover:shadow-sm ${task.status === 'completed' ? 'opacity-60 bg-muted/30' : 'bg-card'}`}
-                      >
-                        <Checkbox
-                          checked={task.status === 'completed'}
-                          onCheckedChange={(checked) => handleStatusChange(task.id, checked ? 'completed' : 'pending')}
-                          className="w-5 h-5"
-                        />
-                        <div 
-                          className="flex-1 min-w-0 cursor-pointer" 
-                          onClick={() => openTaskDetail(task)}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            {isTodayTask && (
-                              <Badge className="bg-primary text-xs">{t('tasks.today')}</Badge>
-                            )}
-                            <span className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
-                              {task.title}
-                            </span>
-                            <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs`}>
-                              {t(priorityConfig?.labelKey || 'priority.medium')}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Calendar className="w-3 h-3" />
-                            <span>{format(new Date(task.plan_date!), 'MM/dd')}</span>
-                            {deadlineInfo && task.deadline && (
-                              <>
-                                <span>|</span>
-                                <span className={deadlineInfo.color}>{t('tasks.deadline')}: {deadlineInfo.label}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveFromPlan(task.id);
-                          }}
-                          title={t('tasks.removeFromPlan')}
-                        >
-                          <PinOff className="w-4 h-4 text-muted-foreground" />
-                        </Button>
+            <CardContent>
+              <div className="grid grid-cols-7 gap-2">
+                {[0, 1, 2, 3, 4, 5, 6].map((dayOffset) => {
+                  const date = addDays(new Date(), dayOffset);
+                  const dateStr = format(date, 'yyyy-MM-dd');
+                  const dayTasks = weekTasks.filter(t => t.plan_date === dateStr);
+                  const completedCount = dayTasks.filter(t => t.status === 'completed').length;
+                  const isTodayDate = dayOffset === 0;
+                  const hasOverdueTasks = dayTasks.some(t => {
+                    if (!t.deadline) return false;
+                    return isPast(new Date(t.deadline)) && !isToday(new Date(t.deadline));
+                  });
+                  
+                  return (
+                    <div
+                      key={dayOffset}
+                      className={`
+                        flex flex-col items-center p-3 rounded-xl transition-all
+                        ${isTodayDate ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2' : ''}
+                        ${!isTodayDate && completedCount === dayTasks.length && dayTasks.length > 0 ? 'bg-emerald-100 dark:bg-emerald-900/50' : ''}
+                        ${!isTodayDate && !completedCount && dayTasks.length > 0 ? 'bg-muted/50' : ''}
+                      `}
+                    >
+                      <span className={`text-xs ${isTodayDate ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                        {format(date, 'EEE')}
+                      </span>
+                      <span className={`text-lg font-bold ${isTodayDate ? '' : completedCount === dayTasks.length && dayTasks.length > 0 ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>
+                        {format(date, 'd')}
+                      </span>
+                      <div className="mt-1 text-xs">
+                        {dayTasks.length > 0 ? (
+                          <span className={`
+                            ${completedCount === dayTasks.length && dayTasks.length > 0 ? 'text-emerald-600 dark:text-emerald-400' : ''}
+                            ${isTodayDate ? 'text-primary-foreground/70' : 'text-muted-foreground'}
+                          `}>
+                            {completedCount}/{dayTasks.length}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/50">-</span>
+                        )}
                       </div>
-                    );
-                  })
-              )}
+                      {hasOverdueTasks && (
+                        <AlertCircle className={`w-4 h-4 mt-1 ${isTodayDate ? 'text-primary-foreground' : 'text-red-500'}`} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
+
+          {/* Week Tasks List */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              <ListTodo className="w-5 h-5" />
+              {t('tasks.weekTasks')} ({weekTasks.length})
+            </h3>
+            
+            {weekTasks.length === 0 ? (
+              <Card className="py-8">
+                <CardContent className="text-center text-muted-foreground">
+                  <CalendarDays className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>{t('tasks.noWeekTasks')}</p>
+                  <p className="text-sm">{t('tasks.addWeekTask')}</p>
+                </CardContent>
+              </Card>
+            ) : (
+              weekTasks
+                .sort((a, b) => {
+                  if (!a.plan_date) return 1;
+                  if (!b.plan_date) return -1;
+                  return a.plan_date.localeCompare(b.plan_date);
+                })
+                .map((task) => renderTaskCard(task, true, task.plan_date === todayStr))
+            )}
+          </div>
         </TabsContent>
 
         {/* All Tasks Tab */}
         <TabsContent value="all" className="space-y-4 mt-4">
-          {/* All Tasks List */}
+          {/* Quick Add Section */}
+          {unPlannedTasks.length > 0 && (
+            <Card className="border-dashed border-2 bg-muted/30">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-500" />
+                  {t('tasks.unplannedTasks')} ({unPlannedTasks.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {unPlannedTasks.slice(0, 5).map((task) => {
+                  const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
+                  const deadlineInfo = getDeadlineInfo(task);
+                  return (
+                    <div 
+                      key={task.id}
+                      className="flex items-center gap-3 p-3 rounded-lg bg-card border hover:shadow-sm transition-shadow"
+                    >
+                      <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium truncate block">{task.title}</span>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs py-0`}>
+                            {t(priorityConfig?.labelKey || 'priority.medium')}
+                          </Badge>
+                          {deadlineInfo && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${deadlineInfo.color}`}>
+                              {deadlineInfo.text}
+                            </span>
+                          )}
+                          {(task.subtask_total || 0) > 0 && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <ListTodo className="w-3 h-3" />
+                              {task.subtask_completed || 0}/{task.subtask_total || 0}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex items-center gap-1"
+                          onClick={() => handleQuickAddToPlan(task.id, 'today')}
+                        >
+                          <Pin className="w-3 h-3" />
+                          {t('tasks.addToToday')}
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {unPlannedTasks.length > 5 && (
+                  <p className="text-center text-sm text-muted-foreground py-2">
+                    +{unPlannedTasks.length - 5} {t('tasks.moreTasks')}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* All Tasks */}
           <div className="space-y-3">
-            {filteredTasks.length === 0 ? (
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              <Sparkles className="w-5 h-5" />
+              {t('tasks.allTasks')} ({tasks.length})
+            </h3>
+            
+            {tasks.length === 0 ? (
               <Card className="py-12">
                 <CardContent className="text-center">
                   <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
@@ -994,135 +1147,17 @@ export default function TasksPage() {
                 </CardContent>
               </Card>
             ) : (
-              filteredTasks.map((task) => {
-                const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
-                const deadlineInfo = getDeadlineInfo(task);
-                const hasSubtasks = (task.subtask_total || 0) > 0;
-                const subtaskProgress = task.subtask_progress || 0;
-                const isTodayPlanned = task.plan_date === todayStr;
-
-                return (
-                  <Card
-                    key={task.id}
-                    className={`card-hover transition-all ${task.status === 'completed' ? 'opacity-60' : ''}`}
-                  >
-                    <CardContent className="flex items-center gap-4 py-4">
-                      {/* Status Toggle */}
-                      <Checkbox
-                        checked={task.status === 'completed'}
-                        onCheckedChange={(checked) => handleStatusChange(task.id, checked ? 'completed' : 'pending')}
-                        className="w-5 h-5"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-
-                      {/* Task Info - Clickable */}
-                      <div 
-                        className="flex-1 min-w-0 cursor-pointer" 
-                        onClick={() => openTaskDetail(task)}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          {isTodayPlanned && (
-                            <Badge className="bg-primary text-xs">{t('tasks.today')}</Badge>
-                          )}
-                          <span className={`font-medium ${task.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
-                            {task.title}
-                          </span>
-                          <Badge variant="outline" className={`${priorityConfig?.textColor} border-current`}>
-                            {t(priorityConfig?.labelKey || 'priority.medium')}
-                          </Badge>
-                          <Badge variant="secondary">{t(`category.${task.category}`)}</Badge>
-                          {hasSubtasks && (
-                            <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
-                              <ListTodo className="w-3 h-3 mr-1" />
-                              {task.subtask_completed || 0}/{task.subtask_total || 0}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          {deadlineInfo && (
-                            <span className={`flex items-center gap-1 ${deadlineInfo.color}`}>
-                              <Calendar className="w-3 h-3" />
-                              {deadlineInfo.label}
-                            </span>
-                          )}
-                          {task.estimated_time && (
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {t('tasks.minutes', { minutes: task.estimated_time })}
-                            </span>
-                          )}
-                          {/* Subtask Progress Bar */}
-                          {hasSubtasks && (
-                            <div className="flex items-center gap-2 flex-1 max-w-[200px]">
-                              <Progress value={subtaskProgress} className="h-1.5 flex-1" />
-                              <span className="text-xs">{subtaskProgress}%</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex items-center gap-2">
-                        {!task.plan_date && task.status !== 'completed' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleQuickAddToPlan(task.id, 'today');
-                            }}
-                            title={t('tasks.addToToday')}
-                          >
-                            <Pin className="w-4 h-4 text-primary" />
-                          </Button>
-                        )}
-                        {task.status !== 'completed' && task.status !== 'in_progress' && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStatusChange(task.id, 'in_progress');
-                            }}
-                            title={t('common.startTask')}
-                          >
-                            <PlayCircle className="w-4 h-4 text-cyan-500" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingTask(task);
-                            setShowEditDialog(true);
-                          }}
-                          title={t('common.edit')}
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteTask(task.id);
-                          }}
-                          title={t('common.delete')}
-                          className="hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })
+              tasks
+                .sort((a, b) => {
+                  const priorityOrder = { high: 1, medium: 2, low: 3 };
+                  return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
+                })
+                .map((task) => renderTaskCard(task, true, task.plan_date === todayStr))
             )}
           </div>
 
-          {/* Clear Completed Button */}
-          {stats.completed > 0 && (
+          {/* Clear Completed */}
+          {overallStats.completed > 0 && (
             <div className="flex justify-center">
               <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
                 <AlertDialogTrigger asChild>
@@ -1157,17 +1192,23 @@ export default function TasksPage() {
           <DialogHeader>
             <DialogTitle className="text-xl">{detailTask?.title}</DialogTitle>
             <DialogDescription>
-              <div className="flex items-center gap-4 mt-2">
+              <div className="flex flex-wrap items-center gap-3 mt-2">
                 {detailTask?.plan_date && (
-                  <span className="flex items-center gap-1 text-sm">
-                    <Calendar className="w-4 h-4" />
+                  <span className="flex items-center gap-1 text-sm bg-blue-50 text-blue-600 px-2 py-1 rounded">
+                    <CalendarDays className="w-4 h-4" />
                     {t('tasks.planDate')}: {format(new Date(detailTask.plan_date), 'yyyy-MM-dd')}
                   </span>
                 )}
                 {detailTask?.deadline && (
-                  <span className="flex items-center gap-1 text-sm">
+                  <span className="flex items-center gap-1 text-sm bg-orange-50 text-orange-600 px-2 py-1 rounded">
                     <Clock className="w-4 h-4" />
                     {t('tasks.deadline')}: {format(new Date(detailTask.deadline), 'yyyy-MM-dd')}
+                  </span>
+                )}
+                {detailTask?.estimated_time && (
+                  <span className="flex items-center gap-1 text-sm bg-purple-50 text-purple-600 px-2 py-1 rounded">
+                    <Timer className="w-4 h-4" />
+                    {detailTask.estimated_time} {t('common.minutes')}
                   </span>
                 )}
               </div>
@@ -1190,8 +1231,8 @@ export default function TasksPage() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h4 className="font-medium flex items-center gap-2">
-                  <ListTodo className="w-4 h-4" />
-                  {t('tasks.subtasks') || '子任务'}
+                  <ListTodo className="w-4 h-4 text-blue-500" />
+                  {t('tasks.subtasks')}
                 </h4>
                 {subtasks.length > 0 && (
                   <span className="text-sm text-muted-foreground">
@@ -1203,8 +1244,8 @@ export default function TasksPage() {
               {/* Subtask Progress */}
               {subtasks.length > 0 && (
                 <Progress 
-                  value={subtasks.length > 0 ? (subtasks.filter(s => s.completed).length / subtasks.length) * 100 : 0} 
-                  className="h-2" 
+                  value={(subtasks.filter(s => s.completed).length / subtasks.length) * 100} 
+                  className="h-3" 
                 />
               )}
 
@@ -1213,7 +1254,7 @@ export default function TasksPage() {
                 {subtasks.map((subtask) => (
                   <div 
                     key={subtask.id} 
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 group"
+                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 group"
                   >
                     <Checkbox
                       checked={subtask.completed === 1}
@@ -1234,7 +1275,7 @@ export default function TasksPage() {
                 ))}
                 {subtasks.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-4">
-                    {t('tasks.noSubtasks') || '暂无子任务'}
+                    {t('tasks.noSubtasks')}
                   </p>
                 )}
               </div>
@@ -1242,13 +1283,11 @@ export default function TasksPage() {
               {/* Add Subtask */}
               <div className="flex gap-2 pt-2">
                 <Input
-                  placeholder={t('tasks.addSubtaskPlaceholder') || '添加子任务...'}
+                  placeholder={t('tasks.addSubtaskPlaceholder')}
                   value={newSubtaskTitle}
                   onChange={(e) => setNewSubtaskTitle(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      addSubtask();
-                    }
+                    if (e.key === 'Enter') addSubtask();
                   }}
                 />
                 <Button onClick={addSubtask} disabled={!newSubtaskTitle.trim()}>
@@ -1260,7 +1299,7 @@ export default function TasksPage() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
-              {t('common.close') || '关闭'}
+              {t('common.close')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1347,6 +1386,3 @@ export default function TasksPage() {
     </div>
   );
 }
-
-// Import useAuth
-import { useAuth } from '@/hooks/useAuth';

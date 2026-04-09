@@ -32,7 +32,6 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
     { label: t('nav.home'), href: '/dashboard', icon: Home },
     { label: t('nav.tasks'), href: '/tasks', icon: BookOpen },
     { label: t('nav.pomodoro'), href: '/pomodoro', icon: Timer },
-    { label: t('nav.plans'), href: '/plans', icon: Calendar },
     { label: t('nav.stats'), href: '/stats', icon: BarChart3 },
     { label: t('nav.recycle'), href: '/recycle', icon: Trash2 },
   ];
@@ -126,7 +125,6 @@ function MobileNav() {
     { label: t('nav.home'), href: '/dashboard', icon: Home },
     { label: t('nav.tasks'), href: '/tasks', icon: BookOpen },
     { label: t('nav.pomodoro'), href: '/pomodoro', icon: Timer },
-    { label: t('nav.plans'), href: '/plans', icon: Calendar },
     { label: t('nav.stats'), href: '/stats', icon: BarChart3 },
     { label: t('nav.recycle'), href: '/recycle', icon: Trash2 },
   ];
