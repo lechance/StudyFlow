@@ -1,56 +1,146 @@
-# 项目上下文
+# StudyFlow - 智能学习助手
 
-### 版本技术栈
+## 项目概述
+
+StudyFlow 是一款面向学生和职场人的智能学习计划与时间管理 Web 应用，提供任务管理、番茄钟、学习计划、数据统计等核心功能。
+
+## 技术栈
 
 - **Framework**: Next.js 16 (App Router)
 - **Core**: React 19
 - **Language**: TypeScript 5
 - **UI 组件**: shadcn/ui (基于 Radix UI)
 - **Styling**: Tailwind CSS 4
+- **数据库**: SQLite (better-sqlite3)
+- **图标**: Lucide React
 
 ## 目录结构
 
 ```
-├── public/                 # 静态资源
-├── scripts/                # 构建与启动脚本
-│   ├── build.sh            # 构建脚本
-│   ├── dev.sh              # 开发环境启动脚本
-│   ├── prepare.sh          # 预处理脚本
-│   └── start.sh            # 生产环境启动脚本
 ├── src/
-│   ├── app/                # 页面路由与布局
-│   ├── components/ui/      # Shadcn UI 组件库
-│   ├── hooks/              # 自定义 Hooks
-│   ├── lib/                # 工具库
-│   │   └── utils.ts        # 通用工具函数 (cn)
-│   └── server.ts           # 自定义服务端入口
-├── next.config.ts          # Next.js 配置
-├── package.json            # 项目依赖管理
-└── tsconfig.json           # TypeScript 配置
+│   ├── app/                      # Next.js App Router
+│   │   ├── (main)/              # 主应用页面群组
+│   │   │   ├── dashboard/       # 首页仪表盘
+│   │   │   ├── tasks/           # 任务管理
+│   │   │   ├── pomodoro/        # 番茄钟
+│   │   │   ├── plans/           # 学习计划
+│   │   │   ├── stats/           # 数据统计
+│   │   │   └── recycle/         # 回收站
+│   │   ├── api/                 # API 路由
+│   │   │   ├── auth/            # 认证 API
+│   │   │   ├── tasks/           # 任务 API
+│   │   │   ├── study/           # 学习记录 API
+│   │   │   ├── plans/           # 计划 API
+│   │   │   ├── stats/           # 统计 API
+│   │   │   └── users/           # 用户管理 API
+│   │   └── login/               # 登录页面
+│   ├── components/               # React 组件
+│   │   ├── ui/                  # shadcn/ui 组件库
+│   │   └── MainLayout.tsx       # 主布局组件
+│   ├── hooks/                   # 自定义 Hooks
+│   │   ├── useAuth.tsx          # 认证状态管理
+│   │   └── useTasks.tsx         # 任务状态管理
+│   └── lib/                     # 工具库
+│       ├── api.ts               # API 客户端
+│       ├── auth.ts              # 认证工具
+│       ├── db.ts                # 数据库连接
+│       └── types.ts             # TypeScript 类型定义
+├── data/                        # SQLite 数据库目录
+├── scripts/                     # 构建脚本
+└── package.json
 ```
 
-- 项目文件（如 app 目录、pages 目录、components 等）默认初始化到 `src/` 目录下。
+## 核心功能
 
-## 包管理规范
+### 1. 任务管理
+- 创建、编辑、删除任务
+- 任务分类（学习、工作、阅读、运动、其他）
+- 优先级设置（高、中、低）
+- 状态切换（待办、进行中、已完成）
+- 截止日期和预计时长
+- 任务按优先级和截止日期自动排序
+- 回收站功能（30天恢复期）
 
-**仅允许使用 pnpm** 作为包管理器，**严禁使用 npm 或 yarn**。
-**常用命令**：
-- 安装依赖：`pnpm add <package>`
-- 安装开发依赖：`pnpm add -D <package>`
-- 安装所有依赖：`pnpm install`
-- 移除依赖：`pnpm remove <package>`
+### 2. 番茄钟
+- 25分钟专注 + 5分钟休息（可自定义）
+- 每4个番茄钟后长休息15分钟
+- 圆形进度显示
+- 关联任务跟踪
+- 完成提醒音效
 
-## 开发规范
+### 3. 学习计划
+- 每日计划制定
+- 周视图概览
+- 打卡记录
+- 连续打卡天数统计
 
-### Hydration 问题防范
+### 4. 数据统计
+- 今日学习时长
+- 本周/本月统计数据
+- 学习趋势图表
+- 任务完成率
 
-1. 严禁在 JSX 渲染逻辑中直接使用 typeof window、Date.now()、Math.random() 等动态数据。**必须使用 'use client' 并配合 useEffect + useState 确保动态内容仅在客户端挂载后渲染**；同时严禁非法 HTML 嵌套（如 <p> 嵌套 <div>）。
-2. **禁止使用 head 标签**，优先使用 metadata，详见文档：https://nextjs.org/docs/app/api-reference/functions/generate-metadata
-   1. 三方 CSS、字体等资源可在 `globals.css` 中顶部通过 `@import` 引入或使用 next/font
-   2. preload, preconnect, dns-prefetch 通过 ReactDOM 的 preload、preconnect、dns-prefetch 方法引入
-   3. json-ld 可阅读 https://nextjs.org/docs/app/guides/json-ld
+### 5. 用户系统
+- 用户注册/登录
+- 会话管理
+- 管理员用户管理
 
-## UI 设计与组件规范 (UI & Styling Standards)
+## API 接口
 
-- 模板默认预装核心组件库 `shadcn/ui`，位于`src/components/ui/`目录下
-- Next.js 项目**必须默认**采用 shadcn/ui 组件、风格和规范，**除非用户指定用其他的组件和规范。**
+| 接口 | 方法 | 描述 |
+|------|------|------|
+| `/api/auth/register` | POST | 用户注册 |
+| `/api/auth/login` | POST | 用户登录 |
+| `/api/auth/logout` | POST | 用户登出 |
+| `/api/auth/me` | GET | 获取当前用户 |
+| `/api/tasks` | GET/POST | 获取/创建任务 |
+| `/api/tasks/[id]` | GET/PUT/DELETE | 任务操作 |
+| `/api/tasks/recycle` | GET | 回收站 |
+| `/api/study/records` | GET/POST | 学习记录 |
+| `/api/plans` | GET/POST | 每日计划 |
+| `/api/plans/checkin` | GET/POST | 打卡 |
+| `/api/stats` | GET | 统计数据 |
+| `/api/users` | GET | 用户列表（管理员） |
+
+## 开发命令
+
+```bash
+# 安装依赖
+pnpm install
+
+# 开发模式
+pnpm dev
+
+# 构建生产版本
+pnpm build
+
+# 启动生产服务
+pnpm start
+```
+
+## 访问地址
+
+- 开发环境: http://localhost:5000
+- 部署环境: https://${COZE_PROJECT_DOMAIN_DEFAULT}
+
+## 数据库
+
+使用 SQLite 数据库，文件存储在 `data/study.db`。
+
+### 主要表结构
+
+- `users`: 用户表
+- `tasks`: 任务表
+- `sessions`: 会话表
+- `study_records`: 学习记录表
+- `daily_plans`: 每日计划表
+- `check_ins`: 打卡记录表
+- `recycle_bin`: 回收站
+- `pomodoro_settings`: 番茄钟设置
+
+## 注意事项
+
+1. 所有页面都需要登录才能访问
+2. 任务删除后进入回收站，30天后自动清除
+3. 番茄钟设置自动保存
+4. 统计数据显示最近7/14/30天的数据
