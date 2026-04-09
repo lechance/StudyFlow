@@ -78,7 +78,7 @@ const PRIORITY_CONFIG: Record<string, { labelKey: string; textColor: string; bgC
   low: { labelKey: 'priority.low', textColor: 'text-green-600', bgColor: 'bg-green-50 dark:bg-green-950/30' },
 };
 
-type ViewTab = 'today' | 'week' | 'all';
+type ViewTab = 'week' | 'all';
 
 export default function TasksPage() {
   const { user } = useAuth();
@@ -86,7 +86,7 @@ export default function TasksPage() {
   const { t, language } = useLanguage();
   
   // View state
-  const [activeTab, setActiveTab] = useState<ViewTab>('today');
+  const [activeTab, setActiveTab] = useState<ViewTab>('week');
   
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -115,11 +115,6 @@ export default function TasksPage() {
   // Today's date string
   const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
 
-  // Filter tasks by plan_date
-  const todayTasks = useMemo(() => {
-    return tasks.filter(task => task.plan_date === todayStr);
-  }, [tasks, todayStr]);
-
   const weekTasks = useMemo(() => {
     const today = new Date();
     const weekEnd = addDays(today, 7);
@@ -129,31 +124,6 @@ export default function TasksPage() {
       return planDate >= today && planDate <= weekEnd;
     });
   }, [tasks]);
-
-  // Stats for different views
-  const todayStats = useMemo(() => {
-    const total = todayTasks.length;
-    const completed = todayTasks.filter(t => t.status === 'completed').length;
-    const pending = todayTasks.filter(t => t.status !== 'completed').length;
-    
-    // Calculate subtask stats
-    let subtaskTotal = 0;
-    let subtaskCompleted = 0;
-    todayTasks.forEach(task => {
-      subtaskTotal += task.subtask_total || 0;
-      subtaskCompleted += task.subtask_completed || 0;
-    });
-    
-    return { 
-      total, 
-      completed, 
-      pending, 
-      progress: total > 0 ? Math.round((completed / total) * 100) : 0,
-      subtaskTotal,
-      subtaskCompleted,
-      subtaskProgress: subtaskTotal > 0 ? Math.round((subtaskCompleted / subtaskTotal) * 100) : 0
-    };
-  }, [todayTasks]);
 
   const weekStats = useMemo(() => {
     const total = weekTasks.length;
@@ -275,17 +245,12 @@ export default function TasksPage() {
       return;
     }
 
-    let planDate = newTask.plan_date;
-    if (!planDate) {
-      if (activeTab === 'today') planDate = todayStr;
-    }
-
     const success = await addTask({
       title: newTask.title,
       category: newTask.category,
       priority: newTask.priority as 'high' | 'medium' | 'low',
       deadline: newTask.deadline || undefined,
-      plan_date: planDate || undefined,
+      plan_date: newTask.plan_date || undefined,
       estimated_time: newTask.estimated_time ? parseInt(newTask.estimated_time) : undefined,
       status: 'pending'
     });
@@ -801,12 +766,8 @@ export default function TasksPage() {
       </div>
 
       {/* Tab Navigation */}
-      <Tabs defaultValue="today" value={activeTab} onValueChange={(v) => setActiveTab(v as ViewTab)}>
-        <TabsList className="grid w-full max-w-[500px] grid-cols-3">
-          <TabsTrigger value="today" className="flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            {t('tasks.todayPlan')}
-          </TabsTrigger>
+      <Tabs defaultValue="week" value={activeTab} onValueChange={(v) => setActiveTab(v as ViewTab)}>
+        <TabsList className="grid w-full max-w-[400px] grid-cols-2">
           <TabsTrigger value="week" className="flex items-center gap-2">
             <CalendarDays className="w-4 h-4" />
             {t('tasks.weekPlan')}
@@ -816,107 +777,6 @@ export default function TasksPage() {
             {t('tasks.allTasks')}
           </TabsTrigger>
         </TabsList>
-
-        {/* Today Plan Tab */}
-        <TabsContent value="today" className="space-y-4 mt-4">
-          {/* Today Progress Card */}
-          <Card className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 border-emerald-200 dark:border-emerald-800">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                    <Target className="w-7 h-7 text-emerald-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-xl">{t('tasks.todayPlan')}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(), 'yyyy-MM-dd')} · {todayStats.total} {t('tasks.tasks')}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-4xl font-bold text-emerald-600">{todayStats.progress}%</p>
-                  <p className="text-sm text-muted-foreground">{todayStats.completed}/{todayStats.total}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Today's Tasks */}
-          <div className="space-y-3">
-            <h3 className="font-semibold text-lg flex items-center gap-2">
-              <ListTodo className="w-5 h-5" />
-              {t('tasks.todayTasks')} ({todayTasks.length})
-            </h3>
-            
-            {todayTasks.length === 0 ? (
-              <Card className="py-8">
-                <CardContent className="text-center text-muted-foreground">
-                  <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                  <p>{t('tasks.noTodayTasks')}</p>
-                  <p className="text-sm">{t('tasks.addTodayTask')}</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {todayTasks.map((task) => renderTaskCard(task, true, true))}
-              </div>
-            )}
-          </div>
-
-          {/* Quick Add Section */}
-          {unPlannedTasks.length > 0 && (
-            <Card className="border-dashed border-2 bg-muted/30">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-amber-500" />
-                  {t('tasks.quickAddToPlan')} ({unPlannedTasks.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {unPlannedTasks.slice(0, 5).map((task) => {
-                  const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
-                  return (
-                    <div 
-                      key={task.id}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-card border hover:shadow-sm transition-shadow"
-                    >
-                      <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <span className="font-medium truncate block">{task.title}</span>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs py-0`}>
-                            {t(priorityConfig?.labelKey || 'priority.medium')}
-                          </Badge>
-                          {(task.subtask_total || 0) > 0 && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <ListTodo className="w-3 h-3" />
-                              {task.subtask_completed || 0}/{task.subtask_total || 0}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="flex items-center gap-1 flex-shrink-0"
-                        onClick={() => handleQuickAddToPlan(task.id, 'today')}
-                      >
-                        <Pin className="w-3 h-3" />
-                        {t('tasks.addToToday')}
-                      </Button>
-                    </div>
-                  );
-                })}
-                {unPlannedTasks.length > 5 && (
-                  <p className="text-center text-sm text-muted-foreground py-2">
-                    +{unPlannedTasks.length - 5} {t('tasks.moreTasks')}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
 
         {/* Week Plan Tab */}
         <TabsContent value="week" className="space-y-4 mt-4">
