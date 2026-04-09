@@ -740,7 +740,7 @@ export default function TasksPage() {
 
       {/* Overview Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-200 dark:border-blue-800">
+        <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
@@ -754,7 +754,7 @@ export default function TasksPage() {
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border-emerald-200 dark:border-emerald-800">
+        <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-emerald-500/20 flex items-center justify-center">
@@ -768,7 +768,7 @@ export default function TasksPage() {
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-200 dark:border-purple-800">
+        <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
@@ -785,7 +785,7 @@ export default function TasksPage() {
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-br from-red-500/10 to-orange-500/10 border-red-200 dark:border-red-800">
+        <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-lg bg-red-500/20 flex items-center justify-center">
@@ -820,7 +820,7 @@ export default function TasksPage() {
         {/* Today Plan Tab */}
         <TabsContent value="today" className="space-y-4 mt-4">
           {/* Today Progress Card */}
-          <Card className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-cyan-500/10 border-emerald-200 dark:border-emerald-800">
+          <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
@@ -921,7 +921,7 @@ export default function TasksPage() {
         {/* Week Plan Tab */}
         <TabsContent value="week" className="space-y-4 mt-4">
           {/* Week Progress Card */}
-          <Card className="bg-gradient-to-r from-purple-500/10 via-violet-500/10 to-pink-500/10 border-purple-200 dark:border-purple-800">
+          <Card>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
