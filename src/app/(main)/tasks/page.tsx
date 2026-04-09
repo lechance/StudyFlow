@@ -819,29 +819,6 @@ export default function TasksPage() {
 
         {/* Today Plan Tab */}
         <TabsContent value="today" className="space-y-4 mt-4">
-          {/* Today Progress Card */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                    <Target className="w-7 h-7 text-emerald-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-xl">{t('tasks.todayPlan')}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(), 'yyyy-MM-dd')} · {todayStats.total} {t('tasks.tasks')}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-4xl font-bold text-emerald-600">{todayStats.progress}%</p>
-                  <p className="text-sm text-muted-foreground">{todayStats.completed}/{todayStats.total}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Today's Tasks */}
           <div className="space-y-3">
             <h3 className="font-semibold text-lg flex items-center gap-2">
@@ -920,92 +897,10 @@ export default function TasksPage() {
 
         {/* Week Plan Tab */}
         <TabsContent value="week" className="space-y-4 mt-4">
-          {/* Week Progress Card */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                    <CalendarDays className="w-7 h-7 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-xl">{t('tasks.weekPlan')}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(), 'MM/dd')} - {format(addDays(new Date(), 7), 'MM/dd')}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-4xl font-bold text-purple-600">{weekStats.progress}%</p>
-                  <p className="text-sm text-muted-foreground">{weekStats.completed}/{weekStats.total}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Week Calendar View */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="w-5 h-5" />
-                {t('tasks.weekOverview')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-7 gap-2">
-                {[0, 1, 2, 3, 4, 5, 6].map((dayOffset) => {
-                  const date = addDays(new Date(), dayOffset);
-                  const dateStr = format(date, 'yyyy-MM-dd');
-                  const dayTasks = weekTasks.filter(t => t.plan_date === dateStr);
-                  const completedCount = dayTasks.filter(t => t.status === 'completed').length;
-                  const isTodayDate = dayOffset === 0;
-                  const hasOverdueTasks = dayTasks.some(t => {
-                    if (!t.deadline) return false;
-                    return isPast(new Date(t.deadline)) && !isToday(new Date(t.deadline));
-                  });
-                  
-                  return (
-                    <div
-                      key={dayOffset}
-                      className={`
-                        flex flex-col items-center p-3 rounded-xl transition-all
-                        ${isTodayDate ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2' : ''}
-                        ${!isTodayDate && completedCount === dayTasks.length && dayTasks.length > 0 ? 'bg-emerald-100 dark:bg-emerald-900/50' : ''}
-                        ${!isTodayDate && !completedCount && dayTasks.length > 0 ? 'bg-muted/50' : ''}
-                      `}
-                    >
-                      <span className={`text-xs ${isTodayDate ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                        {format(date, 'EEE')}
-                      </span>
-                      <span className={`text-lg font-bold ${isTodayDate ? '' : completedCount === dayTasks.length && dayTasks.length > 0 ? 'text-emerald-600 dark:text-emerald-400' : ''}`}>
-                        {format(date, 'd')}
-                      </span>
-                      <div className="mt-1 text-xs">
-                        {dayTasks.length > 0 ? (
-                          <span className={`
-                            ${completedCount === dayTasks.length && dayTasks.length > 0 ? 'text-emerald-600 dark:text-emerald-400' : ''}
-                            ${isTodayDate ? 'text-primary-foreground/70' : 'text-muted-foreground'}
-                          `}>
-                            {completedCount}/{dayTasks.length}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground/50">-</span>
-                        )}
-                      </div>
-                      {hasOverdueTasks && (
-                        <AlertCircle className={`w-4 h-4 mt-1 ${isTodayDate ? 'text-primary-foreground' : 'text-red-500'}`} />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Week Tasks List */}
           <div className="space-y-3">
             <h3 className="font-semibold text-lg flex items-center gap-2">
-              <ListTodo className="w-5 h-5" />
+              <CalendarDays className="w-5 h-5" />
               {t('tasks.weekTasks')} ({weekTasks.length})
             </h3>
             
