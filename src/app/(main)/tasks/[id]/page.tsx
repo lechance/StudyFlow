@@ -808,7 +808,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                            className="h-8 w-8"
                             onClick={() => startEditSubtask(subtask)}
                           >
                             <Edit2 className="w-4 h-4 text-muted-foreground hover:text-primary" />
