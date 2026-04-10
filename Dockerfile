@@ -38,7 +38,14 @@ RUN groupadd --system --gid 1001 nodejs && \
     useradd --system --uid 1001 --gid nodejs nextjs
 
 RUN mkdir -p /app/data /app/public && \
-    chown -R nextjs:nodejs /app
+    chown -R nextjs:nodejs /app && \
+    chmod 777 /app/data
+
+# Create a default database with proper permissions
+RUN sqlite3 /app/data/study.db "SELECT 1;" 2>/dev/null || \
+    (touch /app/data/study.db && \
+     chown nextjs:nodejs /app/data/study.db && \
+     chmod 666 /app/data/study.db)
 
 COPY --from=0 /app/.next/standalone ./
 COPY --from=0 /app/.next/static ./.next/static
@@ -47,6 +54,9 @@ COPY --from=0 /app/package.json ./
 COPY --from=0 /app/node_modules ./node_modules
 
 USER nextjs
+
+# Ensure database directory and file are writable
+RUN chmod 777 /app/data && chmod 666 /app/data/study.db
 
 EXPOSE 5000
 

@@ -48,14 +48,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (username: string, password: string) => {
     try {
       const res = await authApi.login(username, password);
-      console.log('[useAuth] Login API response:', res);
       if (res.success) {
         setUser(res.data);
         return { success: true };
       }
       return { success: false, error: res.error };
-    } catch (err) {
-      console.error('[useAuth] Login error:', err);
+    } catch {
       return { success: false, error: 'Network error' };
     }
   };

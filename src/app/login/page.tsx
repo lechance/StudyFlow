@@ -30,25 +30,20 @@ export default function LoginPage() {
   const [regPassword, setRegPassword] = useState('');
   const [regEmail, setRegEmail] = useState('');
 
-  const handleLogin = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
     setError('');
     
-    console.log('[Login] Starting login for:', loginUsername);
-    
     try {
       const result = await login(loginUsername, loginPassword);
-      console.log('[Login] Result:', result);
       
-      if (result && result.success) {
-        console.log('[Login] Success, redirecting to /dashboard');
+      if (result.success) {
         window.location.href = '/dashboard';
       } else {
-        setError(result?.error || t('auth.invalidCredentials'));
+        setError(result.error || t('auth.invalidCredentials'));
       }
-    } catch (err) {
-      console.error('[Login] Error:', err);
+    } catch {
       setError(t('common.error'));
     }
     
