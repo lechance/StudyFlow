@@ -42,6 +42,7 @@ COPY --from=0 /app/.next/static ./.next/static
 COPY --from=0 /app/public ./public
 COPY --from=0 /app/package.json ./
 COPY --from=0 /app/node_modules ./node_modules
+COPY --from=0 /app/dist ./dist
 
 # Create a writable database file if it doesn't exist
 RUN if [ ! -f /app/data/study.db ]; then \
