@@ -118,6 +118,10 @@ export async function PUT(
       updates.push('estimated_time = ?');
       values.push(body.estimated_time);
     }
+    if (body.description !== undefined) {
+      updates.push('description = ?');
+      values.push(body.description || null);
+    }
 
     updates.push('updated_at = datetime(\'now\')');
     values.push(id, user.id);
