@@ -36,11 +36,12 @@ WORKDIR /app
 # Create data directory
 RUN mkdir -p /app/data /app/public && chmod 777 /app/data
 
-# Copy standalone Next.js build (includes everything needed)
-COPY --from=builder /app/.next/standalone/workspace/projects ./
-
-# Copy static files
+# Copy everything needed for Next.js production server
+COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
 
 # Create a writable database file if it doesn't exist
 RUN if [ ! -f /app/data/study.db ]; then \
