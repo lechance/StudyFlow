@@ -110,7 +110,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
   const fetchTaskDetail = async () => {
     try {
-      const res = await api.get(`/api/tasks/${id}`);
+      const res = await api.get(`/tasks/${id}`);
       if (res.success && res.data) {
         setTask(res.data);
         setDescription(res.data.description || '');
@@ -135,7 +135,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   // Fetch subtasks
   const fetchSubtasks = async () => {
     try {
-      const res = await api.get(`/api/subtasks?taskId=${id}`);
+      const res = await api.get(`/subtasks?taskId=${id}`);
       if (res.success) {
         setSubtasks(res.data || []);
       }
@@ -154,7 +154,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   const toggleSubtask = async (subtaskId: string, currentCompleted: number) => {
     try {
       const newCompleted = currentCompleted ? 0 : 1;
-      const res = await api.put('/api/subtasks', { id: subtaskId, completed: newCompleted });
+      const res = await api.put('/subtasks', { id: subtaskId, completed: newCompleted });
       if (res.success) {
         const updatedSubtasks = subtasks.map(s => 
           s.id === subtaskId ? { ...s, completed: newCompleted } : s
@@ -179,18 +179,47 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
   // Add subtask
   const addSubtask = async () => {
-    if (!newSubtaskTitle.trim()) return;
+    const title = newSubtaskTitle.trim();
+    if (!title) {
+      toast.error(t('common.required'));
+      return;
+    }
+    
+    console.log('[DEBUG] Adding subtask:', { taskId: id, title });
+    
     try {
-      const res = await api.post('/api/subtasks', { 
+      const res = await api.post('/subtasks', { 
         taskId: id, 
-        title: newSubtaskTitle.trim() 
+        title: title
       });
-      if (res.success) {
-        setSubtasks(prev => [...prev, res.data]);
+      
+      console.log('[DEBUG] Add subtask response:', res);
+      
+      if (res.success && res.data) {
+        const newSubtasks = [...subtasks, res.data];
+        setSubtasks(newSubtasks);
         setNewSubtaskTitle('');
-        toast.success(t('common.success'));
+        
+        // Update parent task subtask counts
+        if (task) {
+          const completedCount = newSubtasks.filter(s => s.completed === 1).length;
+          const total = newSubtasks.length;
+          const progress = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+          setTask({
+            ...task,
+            subtask_total: total,
+            subtask_completed: completedCount,
+            subtask_progress: progress
+          });
+        }
+        
+        toast.success(t('tasks.subtaskAdded') || '子任务已添加');
+      } else {
+        console.error('[DEBUG] Add subtask failed:', res.error);
+        toast.error(res.error || t('common.error'));
       }
-    } catch {
+    } catch (err) {
+      console.error('[DEBUG] Add subtask error:', err);
       toast.error(t('common.error'));
     }
   };
@@ -198,12 +227,30 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   // Delete subtask
   const deleteSubtask = async (subtaskId: string) => {
     try {
-      const res = await api.del(`/api/subtasks?id=${subtaskId}`);
+      const res = await api.del(`/subtasks?id=${subtaskId}`);
       if (res.success) {
-        setSubtasks(prev => prev.filter(s => s.id !== subtaskId));
-        toast.success(t('common.success'));
+        const newSubtasks = subtasks.filter(s => s.id !== subtaskId);
+        setSubtasks(newSubtasks);
+        
+        // Update parent task subtask counts
+        if (task) {
+          const completedCount = newSubtasks.filter(s => s.completed === 1).length;
+          const total = newSubtasks.length;
+          const progress = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+          setTask({
+            ...task,
+            subtask_total: total,
+            subtask_completed: completedCount,
+            subtask_progress: progress
+          });
+        }
+        
+        toast.success(t('tasks.subtaskDeleted') || '子任务已删除');
+      } else {
+        toast.error(res.error || t('common.error'));
       }
-    } catch {
+    } catch (err) {
+      console.error('Delete subtask error:', err);
       toast.error(t('common.error'));
     }
   };
@@ -218,7 +265,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   const saveSubtaskEdit = async (subtaskId: string) => {
     if (!editingSubtaskTitle.trim()) return;
     try {
-      const res = await api.put('/api/subtasks', { id: subtaskId, title: editingSubtaskTitle.trim() });
+      const res = await api.put('/subtasks', { id: subtaskId, title: editingSubtaskTitle.trim() });
       if (res.success) {
         setSubtasks(prev => prev.map(s => 
           s.id === subtaskId ? { ...s, title: editingSubtaskTitle.trim() } : s
@@ -278,14 +325,14 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       
       // Save to server
       try {
-        await api.put('/api/subtasks', { 
+        await api.put('/subtasks', { 
           id: draggedSubtask.id, 
           sortOrder: targetIndex 
         });
         // Update other subtasks' sort_order
         for (const update of updates) {
           if (update.id !== draggedSubtask.id) {
-            await api.put('/api/subtasks', { 
+            await api.put('/subtasks', { 
               id: update.id, 
               sortOrder: update.sort_order 
             });
