@@ -160,16 +160,14 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
           s.id === subtaskId ? { ...s, completed: newCompleted } : s
         );
         setSubtasks(updatedSubtasks);
-        // Update parent task subtask counts
-        if (task) {
-          const completedCount = updatedSubtasks.filter(s => s.completed === 1).length;
-          const total = updatedSubtasks.length;
-          const progress = total > 0 ? Math.min(100, Math.round((completedCount / total) * 100)) : 0;
+        // Update parent task subtask counts using server-calculated stats
+        if (task && res.parentStats) {
           setTask({
             ...task,
-            subtask_completed: completedCount,
-            subtask_progress: progress
+            ...res.parentStats
           });
+          // Also update the global tasks state
+          updateTask(task.id, res.parentStats);
         }
       }
     } catch {
@@ -185,37 +183,29 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       return;
     }
     
-    console.log('[DEBUG] Adding subtask:', { taskId: id, title });
-    
     try {
       const res = await api.post('/subtasks', { 
         taskId: id, 
         title: title
       });
       
-      console.log('[DEBUG] Add subtask response:', res);
-      
       if (res.success && res.data) {
         const newSubtasks = [...subtasks, res.data];
         setSubtasks(newSubtasks);
         setNewSubtaskTitle('');
         
-        // Update parent task subtask counts
-        if (task) {
-          const completedCount = newSubtasks.filter(s => s.completed === 1).length;
-          const total = newSubtasks.length;
-          const progress = total > 0 ? Math.min(100, Math.round((completedCount / total) * 100)) : 0;
+        // Update parent task subtask counts using server-calculated stats
+        if (task && res.parentStats) {
           setTask({
             ...task,
-            subtask_total: total,
-            subtask_completed: completedCount,
-            subtask_progress: progress
+            ...res.parentStats
           });
+          // Also update the global tasks state
+          updateTask(task.id, res.parentStats);
         }
         
         toast.success(t('tasks.subtaskAdded') || '子任务已添加');
       } else {
-        console.error('[DEBUG] Add subtask failed:', res.error);
         toast.error(res.error || t('common.error'));
       }
     } catch (err) {
@@ -232,17 +222,14 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         const newSubtasks = subtasks.filter(s => s.id !== subtaskId);
         setSubtasks(newSubtasks);
         
-        // Update parent task subtask counts
-        if (task) {
-          const completedCount = newSubtasks.filter(s => s.completed === 1).length;
-          const total = newSubtasks.length;
-          const progress = total > 0 ? Math.min(100, Math.round((completedCount / total) * 100)) : 0;
+        // Update parent task subtask counts using server-calculated stats
+        if (task && res.parentStats) {
           setTask({
             ...task,
-            subtask_total: total,
-            subtask_completed: completedCount,
-            subtask_progress: progress
+            ...res.parentStats
           });
+          // Also update the global tasks state
+          updateTask(task.id, res.parentStats);
         }
         
         toast.success(t('tasks.subtaskDeleted') || '子任务已删除');

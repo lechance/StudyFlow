@@ -88,6 +88,13 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
+  // For subtask operations that also return parent task stats
+  parentStats?: {
+    subtask_progress: number;
+    subtask_completed: number;
+    subtask_total: number;
+  };
+  parentTaskId?: string;
 }
 
 // 统计数据类型

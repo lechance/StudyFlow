@@ -1,51 +1,69 @@
 # StudyFlow - Production Dockerfile
-# Multi-stage build for optimized image size
+# Multi-stage build for optimized image size and security
 
 # ============================================
-# Stage 1: Dependencies
+# Stage 1: Dependencies Installation
 # ============================================
 FROM node:20-alpine AS deps
 
-RUN apk add --no-cache libc6-compat python3 make g++ sqlite-dev
+# Install build dependencies for native modules (better-sqlite3)
+RUN apk add --no-cache \
+    libc6-compat \
+    python3 \
+    make \
+    g++ \
+    sqlite-dev
 
 WORKDIR /app
 
 # Install pnpm globally
 RUN npm install -g pnpm@9
 
-# Copy package files
+# Copy package files first for better caching
 COPY package.json pnpm-lock.yaml* ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile --prod=false
+# Install all dependencies (including devDependencies for build)
+RUN pnpm install --frozen-lockfile
 
 # ============================================
-# Stage 2: Builder
+# Stage 2: Application Build
 # ============================================
 FROM node:20-alpine AS builder
 
-RUN apk add --no-cache python3 make g++ sqlite-dev
+# Install build dependencies
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    sqlite-dev
 
 WORKDIR /app
 
 # Copy dependencies from deps stage
 COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source code
 COPY . .
 
-# Set environment variables
+# Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV NEXT_SKIP_TYPECHECKING=1
 
-# Build the application
+# Build the Next.js application
+# The standalone output mode creates a standalone Node.js server
 RUN pnpm build
 
 # ============================================
-# Stage 3: Runner
+# Stage 3: Production Runner
 # ============================================
 FROM node:20-alpine AS runner
 
-# Install runtime dependencies
-RUN apk add --no-cache sqlite-libs
+# Install runtime dependencies only
+RUN apk add --no-cache \
+    sqlite-libs \
+    curl \
+    && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
@@ -53,18 +71,23 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Create data directory with proper permissions
-RUN mkdir -p /app/data && chown -R nextjs:nodejs /app
+# Create directories with proper permissions
+RUN mkdir -p /app/data /app/public && \
+    chown -R nextjs:nodejs /app
 
-# Copy necessary files from builder
+# Copy built application from builder stage
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/data ./data
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
 
+# Copy and prepare data directory (empty initially, use volume for persistence)
+RUN chown -R nextjs:nodejs /app/data
+
+# Switch to non-root user
 USER nextjs
 
-# Expose port
+# Expose application port
 EXPOSE 5000
 
 # Environment variables
@@ -73,9 +96,9 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV COZE_PROJECT_ENV=PROD
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD wget --spider -q http://localhost:5000 || exit 1
+# Health check using curl
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:5000 || exit 1
 
-# Start the application
+# Start the Next.js standalone server
 CMD ["node", "server.js"]

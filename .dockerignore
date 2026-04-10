@@ -1,6 +1,7 @@
 # Dependencies
 node_modules
 .pnpm-store
+.npm
 
 # Next.js build output
 .next
@@ -14,6 +15,7 @@ dist
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # Local env files
 .env
@@ -21,6 +23,7 @@ yarn-error.log*
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*.local
 
 # Vercel
 .vercel
@@ -34,6 +37,7 @@ next-env.d.ts
 .vscode
 *.swp
 *.swo
+*.suo
 
 # OS
 .DS_Store
@@ -42,12 +46,40 @@ Thumbs.db
 # Git
 .git
 .gitignore
+.gitattributes
 
 # Logs
 logs
 *.log
+*.log.*
 
 # Test coverage
+coverage
+.nyc_output
+
+# Docker files (not needed in build context)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+*.md
+!README.md
+
+# Temporary files
+tmp
+temp
+*.tmp
+*.temp
+
+# Data directory (should be mounted as volume)
+data/
+*.db
+*.db-journal
+
+# Scripts
+scripts/
+deploy.sh
 coverage
 .nyc_output
 

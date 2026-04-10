@@ -126,9 +126,26 @@ export async function PUT(
 
     const updatedTask = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as Task;
 
+    // Get subtask statistics for the updated task
+    const subtasks = db.prepare(`
+      SELECT * FROM subtasks 
+      WHERE task_id = ? 
+      ORDER BY sort_order ASC, created_at ASC
+    `).all(id);
+
+    const completedCount = subtasks.filter((s: any) => s.completed === 1).length;
+    const totalCount = subtasks.length;
+    const progress = totalCount > 0 ? Math.min(100, Math.round((completedCount / totalCount) * 100)) : 0;
+
     return NextResponse.json<ApiResponse>({
       success: true,
-      data: updatedTask,
+      data: {
+        ...updatedTask,
+        subtasks,
+        subtask_progress: progress,
+        subtask_completed: completedCount,
+        subtask_total: totalCount
+      },
       message: '任务更新成功'
     });
   } catch (error) {

@@ -52,9 +52,31 @@ export async function POST(request: NextRequest) {
       VALUES (?, ?, ?, ?, ?)
     `).run(id, taskId, user.id, title, sortOrder || 0);
 
-    const subtask = db.prepare('SELECT * FROM subtasks WHERE id = ?').get(id);
+    const subtask = db.prepare('SELECT * FROM subtasks WHERE id = ?').get(id) as any;
 
-    return NextResponse.json({ success: true, data: subtask, message: '子任务创建成功' });
+    // Get parent task and recalculate subtask statistics
+    const parentTask = db.prepare(`
+      SELECT t.*, 
+        (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id) as subtask_total,
+        (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id AND completed = 1) as subtask_completed
+      FROM tasks t WHERE t.id = ?
+    `).get(taskId) as any;
+
+    const subtaskStats = parentTask ? {
+      subtask_progress: parentTask.subtask_total > 0 
+        ? Math.min(100, Math.round((parentTask.subtask_completed / parentTask.subtask_total) * 100)) 
+        : 0,
+      subtask_completed: parentTask.subtask_completed || 0,
+      subtask_total: parentTask.subtask_total || 0
+    } : null;
+
+    return NextResponse.json({ 
+      success: true, 
+      data: subtask, 
+      parentStats: subtaskStats,
+      parentTaskId: taskId,
+      message: '子任务创建成功' 
+    });
   } catch (error) {
     console.error('创建子任务失败:', error);
     return NextResponse.json({ error: '创建子任务失败' }, { status: 500 });
@@ -103,9 +125,31 @@ export async function PUT(request: NextRequest) {
       WHERE id = ? AND user_id = ?
     `).run(...values);
 
-    const subtask = db.prepare('SELECT * FROM subtasks WHERE id = ?').get(id);
+    const subtask = db.prepare('SELECT * FROM subtasks WHERE id = ?').get(id) as any;
 
-    return NextResponse.json({ success: true, data: subtask, message: '子任务更新成功' });
+    // Get parent task and recalculate subtask statistics
+    const parentTask = db.prepare(`
+      SELECT t.*, 
+        (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id) as subtask_total,
+        (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id AND completed = 1) as subtask_completed
+      FROM tasks t WHERE t.id = ?
+    `).get(subtask.task_id) as any;
+
+    const subtaskStats = parentTask ? {
+      subtask_progress: parentTask.subtask_total > 0 
+        ? Math.min(100, Math.round((parentTask.subtask_completed / parentTask.subtask_total) * 100)) 
+        : 0,
+      subtask_completed: parentTask.subtask_completed || 0,
+      subtask_total: parentTask.subtask_total || 0
+    } : null;
+
+    return NextResponse.json({ 
+      success: true, 
+      data: subtask, 
+      parentStats: subtaskStats,
+      parentTaskId: subtask?.task_id,
+      message: '子任务更新成功' 
+    });
   } catch (error) {
     console.error('更新子任务失败:', error);
     return NextResponse.json({ error: '更新子任务失败' }, { status: 500 });
@@ -126,9 +170,38 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const db = getDb();
+    
+    // Get the subtask's parent task ID before deleting
+    const subtask = db.prepare('SELECT task_id FROM subtasks WHERE id = ? AND user_id = ?').get(id, user.id) as any;
+    const parentTaskId = subtask?.task_id;
+    
     db.prepare('DELETE FROM subtasks WHERE id = ? AND user_id = ?').run(id, user.id);
 
-    return NextResponse.json({ success: true, message: '子任务已删除' });
+    // Get parent task and recalculate subtask statistics
+    let subtaskStats = null;
+    if (parentTaskId) {
+      const parentTask = db.prepare(`
+        SELECT t.*, 
+          (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id) as subtask_total,
+          (SELECT COUNT(*) FROM subtasks WHERE task_id = t.id AND completed = 1) as subtask_completed
+        FROM tasks t WHERE t.id = ?
+      `).get(parentTaskId) as any;
+
+      subtaskStats = parentTask ? {
+        subtask_progress: parentTask.subtask_total > 0 
+          ? Math.min(100, Math.round((parentTask.subtask_completed / parentTask.subtask_total) * 100)) 
+          : 0,
+        subtask_completed: parentTask.subtask_completed || 0,
+        subtask_total: parentTask.subtask_total || 0
+      } : null;
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      parentStats: subtaskStats,
+      parentTaskId: parentTaskId,
+      message: '子任务已删除' 
+    });
   } catch (error) {
     console.error('删除子任务失败:', error);
     return NextResponse.json({ error: '删除子任务失败' }, { status: 500 });
