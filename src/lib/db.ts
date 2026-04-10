@@ -110,6 +110,7 @@ function initializeTables(database: Database.Database) {
       task_id TEXT NOT NULL,
       user_id TEXT NOT NULL,
       title TEXT NOT NULL,
+      description TEXT,
       completed INTEGER DEFAULT 0,
       sort_order INTEGER DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now')),

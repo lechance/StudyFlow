@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { taskId, title, sortOrder } = body;
+    const { taskId, title, description, sortOrder } = body;
 
     if (!taskId || !title) {
       return NextResponse.json({ error: '任务ID和标题不能为空' }, { status: 400 });
@@ -48,9 +48,9 @@ export async function POST(request: NextRequest) {
     const id = generateId();
     
     db.prepare(`
-      INSERT INTO subtasks (id, task_id, user_id, title, sort_order)
-      VALUES (?, ?, ?, ?, ?)
-    `).run(id, taskId, user.id, title, sortOrder || 0);
+      INSERT INTO subtasks (id, task_id, user_id, title, description, sort_order)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(id, taskId, user.id, title, description || null, sortOrder || 0);
 
     const subtask = db.prepare('SELECT * FROM subtasks WHERE id = ?').get(id) as any;
 
@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { id, completed, title, sortOrder } = body;
+    const { id, completed, title, description, sortOrder } = body;
 
     if (!id) {
       return NextResponse.json({ error: '子任务ID不能为空' }, { status: 400 });
@@ -111,6 +111,10 @@ export async function PUT(request: NextRequest) {
     if (title !== undefined) {
       updates.push('title = ?');
       values.push(title);
+    }
+    if (description !== undefined) {
+      updates.push('description = ?');
+      values.push(description || null);
     }
     if (sortOrder !== undefined) {
       updates.push('sort_order = ?');

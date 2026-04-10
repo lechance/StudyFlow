@@ -35,6 +35,7 @@ interface Subtask {
   id: string;
   task_id: string;
   title: string;
+  description?: string;
   completed: number;
   sort_order: number;
   created_at: string;
@@ -68,6 +69,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   // Subtask editing states
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
   const [editingSubtaskTitle, setEditingSubtaskTitle] = useState('');
+  const [editingSubtaskDescription, setEditingSubtaskDescription] = useState('');
   
   // Subtask drag states
   const [draggedSubtask, setDraggedSubtask] = useState<Subtask | null>(null);
@@ -246,19 +248,29 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   const startEditSubtask = (subtask: Subtask) => {
     setEditingSubtaskId(subtask.id);
     setEditingSubtaskTitle(subtask.title);
+    setEditingSubtaskDescription(subtask.description || '');
   };
 
   // Save subtask edit
   const saveSubtaskEdit = async (subtaskId: string) => {
     if (!editingSubtaskTitle.trim()) return;
     try {
-      const res = await api.put('/subtasks', { id: subtaskId, title: editingSubtaskTitle.trim() });
+      const res = await api.put('/subtasks', { 
+        id: subtaskId, 
+        title: editingSubtaskTitle.trim(),
+        description: editingSubtaskDescription.trim() || undefined
+      });
       if (res.success) {
         setSubtasks(prev => prev.map(s => 
-          s.id === subtaskId ? { ...s, title: editingSubtaskTitle.trim() } : s
+          s.id === subtaskId ? { 
+            ...s, 
+            title: editingSubtaskTitle.trim(),
+            description: editingSubtaskDescription.trim() || undefined
+          } : s
         ));
         setEditingSubtaskId(null);
         setEditingSubtaskTitle('');
+        setEditingSubtaskDescription('');
         toast.success(t('common.success'));
       }
     } catch {
@@ -270,6 +282,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   const cancelSubtaskEdit = () => {
     setEditingSubtaskId(null);
     setEditingSubtaskTitle('');
+    setEditingSubtaskDescription('');
   };
 
   // Drag and drop handlers for subtasks
@@ -727,24 +740,44 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                       
                       {editingSubtaskId === subtask.id ? (
                         // Editing mode
-                        <Input
-                          value={editingSubtaskTitle}
-                          onChange={(e) => setEditingSubtaskTitle(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveSubtaskEdit(subtask.id);
-                            if (e.key === 'Escape') cancelSubtaskEdit();
-                          }}
-                          className="flex-1 h-8"
-                          autoFocus
-                        />
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            value={editingSubtaskTitle}
+                            onChange={(e) => setEditingSubtaskTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveSubtaskEdit(subtask.id);
+                              if (e.key === 'Escape') cancelSubtaskEdit();
+                            }}
+                            className="h-8"
+                            placeholder={t('tasks.taskName')}
+                            autoFocus
+                          />
+                          <Input
+                            value={editingSubtaskDescription}
+                            onChange={(e) => setEditingSubtaskDescription(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveSubtaskEdit(subtask.id);
+                              if (e.key === 'Escape') cancelSubtaskEdit();
+                            }}
+                            className="h-7 text-sm"
+                            placeholder={t('tasks.description')}
+                          />
+                        </div>
                       ) : (
                         // Display mode
-                        <span 
-                          className={`flex-1 cursor-pointer ${subtask.completed ? 'line-through text-muted-foreground' : ''}`}
+                        <div 
+                          className="flex-1 cursor-pointer"
                           onClick={() => !subtask.completed && startEditSubtask(subtask)}
                         >
-                          {subtask.title}
-                        </span>
+                          <div className={`${subtask.completed ? 'line-through text-muted-foreground' : ''}`}>
+                            {subtask.title}
+                          </div>
+                          {subtask.description && (
+                            <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                              {subtask.description}
+                            </div>
+                          )}
+                        </div>
                       )}
                       
                       {editingSubtaskId === subtask.id ? (

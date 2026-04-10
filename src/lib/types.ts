@@ -76,6 +76,7 @@ export interface Subtask {
   task_id: string;
   user_id: string;
   title: string;
+  description?: string;
   completed: number;
   sort_order: number;
   created_at: string;
