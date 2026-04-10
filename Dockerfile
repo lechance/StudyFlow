@@ -49,6 +49,11 @@ RUN if [ ! -f /app/data/study.db ]; then \
         chmod 666 /app/data/study.db; \
     fi
 
+# Always ensure data directory is writable
+RUN chmod -R 777 /app/data
+
+# Note: Container runs as root by default to ensure write access to volumes
+
 # Ensure data directory and database are always writable
 RUN chmod -R 777 /app/data
 

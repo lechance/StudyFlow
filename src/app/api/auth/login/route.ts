@@ -4,7 +4,11 @@ import { verifyPassword, createSession, setSessionCookie, initSessionsTable } fr
 import type { ApiResponse } from '@/lib/types';
 
 // 初始化 sessions 表
-initSessionsTable();
+try {
+  initSessionsTable();
+} catch (error) {
+  console.error('Failed to initialize sessions table:', error);
+}
 
 // 登录
 export async function POST(request: NextRequest) {
@@ -19,28 +23,43 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    console.log('Login attempt for username:', username);
+
     const db = getDb();
+    console.log('Database connection established');
 
     // 查找用户
     const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
     if (!user) {
+      console.log('User not found:', username);
       return NextResponse.json<ApiResponse>({
         success: false,
         error: '用户名或密码错误'
       }, { status: 401 });
     }
+    
+    console.log('User found:', user.id, user.username);
 
     // 验证密码
-    if (!verifyPassword(password, user.password)) {
+    const isPasswordValid = verifyPassword(password, user.password);
+    console.log('Password verification result:', isPasswordValid);
+    
+    if (!isPasswordValid) {
+      console.log('Password verification failed for user:', username);
       return NextResponse.json<ApiResponse>({
         success: false,
         error: '用户名或密码错误'
       }, { status: 401 });
     }
 
+    console.log('Creating session for user:', user.id);
+    
     // 创建会话
     const sessionId = await createSession(user.id);
+    console.log('Session created:', sessionId);
+    
     await setSessionCookie(sessionId);
+    console.log('Session cookie set');
 
     return NextResponse.json<ApiResponse>({
       success: true,
@@ -58,7 +77,7 @@ export async function POST(request: NextRequest) {
     console.error('Login error:', error);
     return NextResponse.json<ApiResponse>({
       success: false,
-      error: '登录失败'
+      error: '登录失败: ' + (error instanceof Error ? error.message : 'Unknown error')
     }, { status: 500 });
   }
 }
