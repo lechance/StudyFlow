@@ -336,127 +336,143 @@ export default function TasksPage() {
     return (
       <Card
         key={task.id}
-        className={`group relative overflow-hidden transition-all duration-200 hover:shadow-md hover:border-primary/30 ${
-          isCompleted ? 'opacity-60' : ''
-        } ${deadlineInfo?.urgent ? `border-l-4 ${deadlineInfo.borderColor.replace('border-', 'border-l-')}` : 'border-l-4 border-l-transparent'}`}
+        className={`card-hover transition-all cursor-pointer ${isCompleted ? 'opacity-60' : ''} ${
+          deadlineInfo?.urgent ? `border ${deadlineInfo.borderColor}` : ''
+        }`}
         onClick={handleCardClick}
       >
         <CardContent className="p-4">
           {/* Header Row */}
           <div className="flex items-start gap-3">
-            <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+            <div onClick={(e) => e.stopPropagation()}>
               <Checkbox
                 checked={isCompleted}
                 onCheckedChange={(checked) => {
                   handleStatusChange(task.id, checked ? 'completed' : 'pending');
                 }}
-                className="w-5 h-5"
+                className="mt-1 w-5 h-5"
               />
             </div>
-            
-            <div className="flex-1 min-w-0 space-y-2">
-              {/* Title Row */}
-              <div className="flex items-center gap-2 flex-wrap">
-                {isTodayTask && (
-                  <Badge className="bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-xs px-2 py-0.5">
-                    今日
-                  </Badge>
-                )}
-                {task.priority === 'high' && !isCompleted && (
-                  <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" title="高优先级" />
-                )}
-                <span className={`font-medium text-sm truncate ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
-                  {task.title}
-                </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {isTodayTask && (
+                    <Badge className="bg-primary text-xs">{t('tasks.today')}</Badge>
+                  )}
+                  <span className={`font-semibold text-base ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                    {task.title}
+                  </span>
+                </div>
               </div>
               
-              {/* Meta Row */}
-              <div className="flex items-center gap-2 flex-wrap text-xs">
-                <span className={`px-1.5 py-0.5 rounded ${priorityConfig?.bgColor}`}>
-                  <span className={priorityConfig?.textColor}>{t(priorityConfig?.labelKey || 'priority.medium')}</span>
-                </span>
-                <span className="px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground">
+              {/* Meta Info Row */}
+              <div className="flex items-center gap-3 flex-wrap text-sm">
+                <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs`}>
+                  {t(priorityConfig?.labelKey || 'priority.medium')}
+                </Badge>
+                <Badge variant="secondary" className="text-xs">
                   {t(`category.${task.category}`)}
-                </span>
+                </Badge>
                 {task.estimated_time && (
-                  <span className="flex items-center gap-1 text-muted-foreground">
+                  <span className="flex items-center gap-1 text-muted-foreground text-xs">
                     <Timer className="w-3 h-3" />
-                    {task.estimated_time}分钟
-                  </span>
-                )}
-                {deadlineInfo && !showPlanInfo && (
-                  <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${deadlineInfo.color}`}>
-                    {deadlineInfo.icon}
-                    {deadlineInfo.text}
+                    {task.estimated_time}{t('common.minutes')}
                   </span>
                 )}
               </div>
             </div>
             
-            {/* Actions - Hidden until hover */}
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+            {/* Quick Actions */}
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
               {!task.plan_date && !isCompleted && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className="h-8 w-8"
                   onClick={() => handleQuickAddToPlan(task.id, 'today')}
-                  title="添加到今日"
+                  title={t('tasks.addToToday')}
                 >
-                  <Pin className="w-3.5 h-3.5 text-primary" />
+                  <Pin className="w-4 h-4 text-primary" />
                 </Button>
               )}
               {task.plan_date && !isCompleted && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7"
+                  className="h-8 w-8"
                   onClick={() => handleRemoveFromPlan(task.id)}
-                  title="从计划移除"
+                  title={t('tasks.removeFromPlan')}
                 >
-                  <PinOff className="w-3.5 h-3.5 text-muted-foreground" />
+                  <PinOff className="w-4 h-4 text-muted-foreground" />
+                </Button>
+              )}
+              {!isCompleted && task.status !== 'in_progress' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleStatusChange(task.id, 'in_progress')}
+                  title={t('common.startTask')}
+                >
+                  <PlayCircle className="w-4 h-4 text-cyan-500" />
                 </Button>
               )}
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7"
+                className="h-8 w-8"
                 onClick={() => {
                   setEditingTask(task);
                   setShowEditDialog(true);
                 }}
-                title="编辑"
+                title={t('common.edit')}
               >
-                <Edit2 className="w-3.5 h-3.5" />
+                <Edit2 className="w-4 h-4" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 hover:text-destructive"
+                className="h-8 w-8 hover:text-destructive"
                 onClick={() => handleDeleteTask(task.id)}
-                title="删除"
+                title={t('common.delete')}
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" />
               </Button>
             </div>
           </div>
+
+          {/* Deadline & Plan Info */}
+          {showPlanInfo && (deadlineInfo || task.plan_date) && (
+            <div className="flex items-center gap-4 mt-3 px-1">
+              {deadlineInfo && (
+                <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${deadlineInfo.color}`}>
+                  {deadlineInfo.icon}
+                  <span>{t('tasks.deadline')}: {deadlineInfo.text}</span>
+                </div>
+              )}
+              {task.plan_date && (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">
+                  <CalendarDays className="w-3 h-3" />
+                  <span>{t('tasks.planDate')}: {format(new Date(task.plan_date), 'MM/dd')}</span>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
         
         {/* Footer: Subtask Progress */}
         {hasSubtasks && (
-          <div className="px-4 pb-3 -mt-1">
-            <div className="flex items-center justify-between text-xs mb-1">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <ListTodo className="w-3.5 h-3.5" />
-                <span>{completedSubtasks}/{totalSubtasks}</span>
+          <div className="px-4 pb-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+              <span className="flex items-center gap-1">
+                <ListTodo className="w-3 h-3" />
+                {completedSubtasks}/{totalSubtasks} {t('tasks.subtasks')}
               </span>
-              <span className={`font-medium ${subtaskProgress === 100 ? 'text-emerald-600' : 'text-muted-foreground'}`}>
-                {subtaskProgress}%
-              </span>
+              <span className="font-medium">{subtaskProgress}%</span>
             </div>
-            <div className="h-1.5 bg-muted/50 rounded-full overflow-hidden">
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
               <div 
-                className={`h-full rounded-full transition-all duration-500 ${
+                className={`h-full rounded-full transition-all duration-300 ${
                   subtaskProgress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-500 to-cyan-500'
                 }`}
                 style={{ width: `${subtaskProgress}%` }}
