@@ -70,6 +70,7 @@ const zh: Record<string, string> = {
   'auth.invalidCredentials': '用户名或密码错误',
   'auth.notLoggedIn': '请先登录',
   'auth.loginPrompt': '登录即表示同意我们的服务条款',
+  'auth.alreadyHaveAccount': '已有账号？立即登录',
 
   // Navigation
   'nav.home': '首页',
@@ -351,6 +352,7 @@ const en: Record<string, string> = {
   'auth.invalidCredentials': 'Invalid username or password',
   'auth.notLoggedIn': 'Please login first',
   'auth.loginPrompt': 'By logging in, you agree to our terms of service',
+  'auth.alreadyHaveAccount': 'Already have an account? Login now',
 
   // Navigation
   'nav.home': 'Home',
