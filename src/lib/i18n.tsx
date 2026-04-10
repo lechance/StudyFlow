@@ -198,6 +198,15 @@ const zh: Record<string, string> = {
   'tasks.subtaskDeleted': '子任务已删除',
   'tasks.selectTask': '选择任务',
   'tasks.noTaskSelected': '未选择任务',
+  'tasks.selectDate': '选择日期',
+  'tasks.addToPlan': '添加到计划',
+  'tasks.addToSpecificDate': '添加到指定日期',
+  'tasks.selectDateTitle': '选择计划日期',
+  'tasks.dateSelected': '已选择 {date} 的计划',
+  'tasks.changeDate': '更改日期',
+  'tasks.thisWeek': '本周',
+  'tasks.pickDate': '选择日期',
+  'tasks.selectedDate': '已选日期',
 
   // Pomodoro
   'pomodoro.title': '番茄钟',
@@ -463,6 +472,15 @@ const en: Record<string, string> = {
   'tasks.tasks': 'tasks',
   'tasks.description': 'Description',
   'tasks.descriptionPlaceholder': 'Enter task description...',
+  'tasks.selectDate': 'Select Date',
+  'tasks.addToPlan': 'Add to Plan',
+  'tasks.addToSpecificDate': 'Add to Specific Date',
+  'tasks.selectDateTitle': 'Select Plan Date',
+  'tasks.dateSelected': 'Plan for {date}',
+  'tasks.changeDate': 'Change Date',
+  'tasks.thisWeek': 'This Week',
+  'tasks.pickDate': 'Pick Date',
+  'tasks.selectedDate': 'Selected Date',
 
   // Common English
   'common.back': 'Back',

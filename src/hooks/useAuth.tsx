@@ -27,6 +27,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
 
   const refreshUser = useCallback(async () => {
     const res = await authApi.getCurrentUser();
@@ -37,13 +38,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // 只在首次加载时获取用户信息
   useEffect(() => {
-    const initAuth = async () => {
-      await refreshUser();
-      setLoading(false);
-    };
-    initAuth();
-  }, [refreshUser]);
+    if (!initialized) {
+      setInitialized(true);
+      refreshUser().finally(() => {
+        setLoading(false);
+      });
+    }
+  }, [initialized, refreshUser]);
 
   const login = async (username: string, password: string) => {
     try {

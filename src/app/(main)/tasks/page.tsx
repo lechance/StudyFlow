@@ -89,7 +89,10 @@ export default function TasksPage() {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
+  const [showPlanDialog, setShowPlanDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
+  const [planningTaskId, setPlanningTaskId] = useState<string | null>(null);
+  const [selectedPlanDate, setSelectedPlanDate] = useState<string>('');
   
   // New task form
   const [newTask, setNewTask] = useState({
@@ -200,6 +203,32 @@ export default function TasksPage() {
       const res = await tasksApi.update(taskId, { plan_date: planDate });
       if (res.success) {
         toast.success(targetType === 'today' ? t('tasks.addedToToday') : t('tasks.addedToWeek'));
+        await fetchTasks();
+      }
+    } catch {
+      toast.error(t('common.error'));
+    }
+  };
+
+  // Open plan dialog for a specific task
+  const handleOpenPlanDialog = (taskId: string) => {
+    setPlanningTaskId(taskId);
+    setSelectedPlanDate(todayStr);
+    setShowPlanDialog(true);
+  };
+
+  // Add task to specific date via dialog
+  const handleAddToSpecificDate = async () => {
+    if (!planningTaskId || !selectedPlanDate) return;
+    
+    try {
+      const res = await tasksApi.update(planningTaskId, { plan_date: selectedPlanDate });
+      if (res.success) {
+        const formattedDate = format(new Date(selectedPlanDate), 'MM/dd');
+        toast.success(t('tasks.dateSelected', { date: formattedDate }));
+        setShowPlanDialog(false);
+        setPlanningTaskId(null);
+        setSelectedPlanDate('');
         await fetchTasks();
       }
     } catch {
@@ -410,15 +439,26 @@ export default function TasksPage() {
             {/* Quick Actions */}
             <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
               {!task.plan_date && !isCompleted && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleQuickAddToPlan(task.id, 'today')}
-                  title={t('tasks.addToToday')}
-                >
-                  <Pin className="w-4 h-4 text-primary" />
-                </Button>
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleQuickAddToPlan(task.id, 'today')}
+                    title={t('tasks.addToToday')}
+                  >
+                    <Pin className="w-4 h-4 text-primary" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => handleOpenPlanDialog(task.id)}
+                    title={t('tasks.selectDate')}
+                  >
+                    <Calendar className="w-4 h-4 text-primary" />
+                  </Button>
+                </>
               )}
               {task.plan_date && !isCompleted && (
                 <Button
@@ -983,6 +1023,88 @@ export default function TasksPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>{t('common.cancel')}</Button>
             <Button className="gradient-bg" onClick={handleUpdateTask}>{t('common.save')}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add to Plan Dialog */}
+      <Dialog open={showPlanDialog} onOpenChange={setShowPlanDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{t('tasks.selectDateTitle')}</DialogTitle>
+            <DialogDescription>
+              {t('tasks.addToSpecificDate')}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {/* Quick select buttons */}
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedPlanDate(todayStr)}
+                className={selectedPlanDate === todayStr ? 'bg-primary text-primary-foreground' : ''}
+              >
+                {t('tasks.today')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedPlanDate(format(addDays(new Date(), 1), 'yyyy-MM-dd'))}
+                className={selectedPlanDate === format(addDays(new Date(), 1), 'yyyy-MM-dd') ? 'bg-primary text-primary-foreground' : ''}
+              >
+                {t('tasks.tomorrow')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedPlanDate(format(addDays(new Date(), 3), 'yyyy-MM-dd'))}
+                className={selectedPlanDate === format(addDays(new Date(), 3), 'yyyy-MM-dd') ? 'bg-primary text-primary-foreground' : ''}
+              >
+                {format(addDays(new Date(), 3), 'MM/dd')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedPlanDate(format(addDays(new Date(), 5), 'yyyy-MM-dd'))}
+                className={selectedPlanDate === format(addDays(new Date(), 5), 'yyyy-MM-dd') ? 'bg-primary text-primary-foreground' : ''}
+              >
+                {format(addDays(new Date(), 5), 'MM/dd')}
+              </Button>
+            </div>
+            
+            {/* Date picker */}
+            <div className="space-y-2">
+              <Label>{t('tasks.pickDate')}</Label>
+              <Input
+                type="date"
+                value={selectedPlanDate}
+                onChange={(e) => setSelectedPlanDate(e.target.value)}
+                min={todayStr}
+              />
+            </div>
+            
+            {/* Selected date preview */}
+            {selectedPlanDate && (
+              <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                <p className="text-muted-foreground">{t('tasks.selectedDate')}:</p>
+                <p className="font-medium text-lg">
+                  {format(new Date(selectedPlanDate), 'yyyy年MM月dd日')}
+                  {selectedPlanDate === todayStr && ` (${t('tasks.today')})`}
+                  {selectedPlanDate === format(addDays(new Date(), 1), 'yyyy-MM-dd') && ` (${t('tasks.tomorrow')})`}
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPlanDialog(false)}>{t('common.cancel')}</Button>
+            <Button 
+              className="gradient-bg" 
+              onClick={handleAddToSpecificDate}
+              disabled={!selectedPlanDate}
+            >
+              {t('tasks.addToPlan')}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

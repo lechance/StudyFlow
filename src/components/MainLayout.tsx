@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { TasksProvider } from '@/hooks/useTasks';
 import { useLanguage } from '@/lib/i18n';
@@ -210,11 +210,22 @@ function LanguageSwitcher() {
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 等待 auth 加载完成后再检查用户状态
+  useEffect(() => {
+    if (mounted && !loading && !user) {
+      startTransition(() => {
+        router.push('/login');
+      });
+    }
+  }, [mounted, loading, user, router]);
 
   if (!mounted) {
     return (
@@ -224,7 +235,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     );
   }
 
-  if (loading) {
+  if (loading || isPending) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">{t('common.loading')}</div>
@@ -233,9 +244,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   }
 
   if (!user) {
-    if (typeof window !== 'undefined') {
-      window.location.href = '/login';
-    }
     return null;
   }
 

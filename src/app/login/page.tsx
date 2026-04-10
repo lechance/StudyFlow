@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
@@ -10,9 +11,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BookOpen, GraduationCap, Loader2 } from 'lucide-react';
 
-export default function LoginPage() {
-  const { user, login, register, loading: authLoading } = useAuth();
-  const { t, language } = useLanguage();
+function LoginForm() {
+  const router = useRouter();
+  const { login, register } = useAuth();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
@@ -20,13 +22,6 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // 如果用户已登录且加载完成，重定向到 dashboard
-  useEffect(() => {
-    if (mounted && !authLoading && user) {
-      window.location.href = '/dashboard';
-    }
-  }, [mounted, authLoading, user]);
 
   // Login form
   const [loginUsername, setLoginUsername] = useState('');
@@ -52,7 +47,7 @@ export default function LoginPage() {
       const result = await login(loginUsername, loginPassword);
       
       if (result.success) {
-        // 登录成功，跳转到仪表盘
+        // 使用 window.location.href 确保 cookie 被正确保存
         window.location.href = '/dashboard';
       } else {
         setError(result.error || t('auth.invalidCredentials'));
@@ -83,7 +78,7 @@ export default function LoginPage() {
     
     const result = await register(regUsername, regPassword, regEmail || undefined);
     if (result.success) {
-      // 注册成功，跳转到首页
+      // 使用 window.location.href 确保 cookie 被正确保存
       window.location.href = '/dashboard';
     } else {
       setError(result.error || t('common.error'));
@@ -252,5 +247,43 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// 主页面组件，包装 LoginForm 以支持 useRouter
+export default function LoginPage() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  // 等待客户端 hydration
+  useEffect(() => {
+    setInitialLoading(false);
+  }, []);
+
+  // 如果用户已登录且 auth 加载完成，重定向到 dashboard
+  useEffect(() => {
+    if (!initialLoading && !loading && user) {
+      router.push('/dashboard');
+    }
+  }, [initialLoading, loading, user, router]);
+
+  // 在 hydration 完成前显示 loading
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }
