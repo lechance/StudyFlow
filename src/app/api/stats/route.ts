@@ -44,6 +44,12 @@ export async function GET(request: NextRequest) {
       WHERE user_id = ? AND date >= ? AND date <= ?
     `).all(user.id, startDate, today) as { date: string; completed: number }[];
 
+    // 获取今日计划的任务数量（通过 tasks 表的 plan_date）
+    const todayPlannedTasks = db.prepare(`
+      SELECT COUNT(*) as count FROM tasks 
+      WHERE user_id = ? AND plan_date = ? AND is_deleted = 0
+    `).get(user.id, today) as { count: number };
+
     // 合并数据
     const stats: DailyStats[] = [];
     for (let i = 0; i < days; i++) {

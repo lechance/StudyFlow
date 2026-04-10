@@ -24,6 +24,31 @@ const zh: Record<string, string> = {
   'common.loading': '加载中...',
   'common.success': '成功',
   'common.error': '错误',
+  'common.required': '不能为空',
+  'common.back': '返回',
+  'common.minutes': '分钟',
+  'common.startTask': '开始任务',
+  'common.enterTaskName': '输入任务名称',
+  'common.greatJob': '太棒了！',
+  'common.unknown': '未知任务',
+  'common.close': '关闭',
+  'common.clear': '清空',
+  'common.clearing': '清空中...',
+  'common.failed': '失败',
+  'common.pleaseEnter': '请输入{content}',
+  'common.other': '其他',
+  'common.due': '截止',
+  'common.noDeadline': '无截止日期',
+  'common.days': '{count} 天',
+  'common.status': '状态',
+  'common.category': '分类',
+  'common.taskName': '任务名称',
+  'common.description': '描述',
+  'common.start': '开始',
+  'common.stop': '停止',
+  'common.reset': '重置',
+  'common.pause': '暂停',
+  'common.resume': '继续',
 
   // Auth
   'auth.login': '登录',
@@ -79,6 +104,20 @@ const zh: Record<string, string> = {
   'dashboard.tipContent': '建议先处理高优先级任务，合理安排番茄钟时间。',
   'dashboard.startFocus': '开始专注',
   'dashboard.readyToStudy': '准备好开始学习了吗？',
+  'dashboard.createJourney': '创建你的学习计划',
+  'dashboard.noDeadline': '无截止日期',
+
+  // Categories
+  'categories.study': '学习',
+  'categories.work': '工作',
+  'categories.reading': '阅读',
+  'categories.exercise': '运动',
+  'categories.other': '其他',
+
+  // Status
+  'status.pending': '待开始',
+  'status.inProgress': '进行中',
+  'status.completed': '已完成',
 
   // Tasks
   'tasks.title': '任务管理',
@@ -122,6 +161,8 @@ const zh: Record<string, string> = {
   'tasks.subtasks': '子任务',
   'tasks.noSubtasks': '暂无子任务',
   'tasks.noDescription': '暂无描述',
+  'tasks.description': '描述',
+  'tasks.descriptionPlaceholder': '输入任务描述...',
   'tasks.addSubtaskPlaceholder': '添加子任务...',
   'tasks.highPriority': '高优先级',
   'tasks.todayPlan': '今日计划',
@@ -145,11 +186,18 @@ const zh: Record<string, string> = {
   'tasks.unplannedTasks': '未计划任务',
   'tasks.viewDetails': '查看详情',
   'tasks.tasks': '个任务',
-  'common.greatJob': '太棒了！',
-  'common.startTask': '开始任务',
-  'common.enterTaskName': '输入任务名称',
-  'common.required': '不能为空',
-  'common.close': '关闭',
+  'tasks.taskDetail': '任务详情',
+  'tasks.backToList': '返回列表',
+  'tasks.markComplete': '标记完成',
+  'tasks.completedAt': '完成于',
+  'tasks.createdAt': '创建于',
+  'tasks.confirmDelete': '确认删除任务？',
+  'tasks.quickAddToPlan': '快速添加到计划',
+  'tasks.timeline': '时间线',
+  'tasks.subtaskAdded': '子任务已添加',
+  'tasks.subtaskDeleted': '子任务已删除',
+  'tasks.selectTask': '选择任务',
+  'tasks.noTaskSelected': '未选择任务',
 
   // Pomodoro
   'pomodoro.title': '番茄钟',
@@ -249,37 +297,7 @@ const zh: Record<string, string> = {
   'recycle.taskPermanentlyDeleted': '任务已永久删除',
   'recycle.tip': '温馨提示',
   'recycle.tipContent': '删除的任务会在回收站保留30天，30天后会自动清除。请及时恢复需要的任务。',
-  
-  // Additional translations for conditional rendering
-  'common.clearing': '清空中...',
-  'common.pleaseEnter': '请输入{content}',
-  'common.failed': '失败',
-  'common.unknown': '未知任务',
-  'common.other': '其他',
-  'common.due': '截止',
-  'common.noDeadline': '无截止日期',
-  'common.days': '{count} 天',
-  'common.status': '状态',
-  'common.category': '分类',
-  'common.minutes': '分钟',
   'common.planningTip': '选择一个模板快速开始',
-  
-  // Priority
-  'priority.high': '高',
-  'priority.medium': '中',
-  'priority.low': '低',
-  
-  // Categories
-  'category.学习': '学习',
-  'category.工作': '工作',
-  'category.阅读': '阅读',
-  'category.运动': '运动',
-  'category.其他': '其他',
-  'category.study': '学习',
-  'category.work': '工作',
-  'category.reading': '阅读',
-  'category.exercise': '运动',
-  'category.other': '其他',
   
   // Login page
   'login.tagline': '智能学习助手，让进步看得见',
@@ -298,10 +316,6 @@ const zh: Record<string, string> = {
   
   // Recycle page
   'recycle.confirmClearAll': '清空后所有任务将无法恢复，确定要清空吗？',
-  
-  // Dashboard
-  'dashboard.noDeadline': '无截止日期',
-  'dashboard.createJourney': '创建新的学习任务，开始你的学习之旅',
 };
 
 // English translations
@@ -432,6 +446,62 @@ const en: Record<string, string> = {
   'tasks.noWeekTasks': 'No planned tasks for this week',
   'tasks.addWeekTask': 'Click to add tasks to this week',
   'tasks.weekOverview': 'Week Overview',
+  'tasks.taskDetail': 'Task Detail',
+  'tasks.backToList': 'Back to List',
+  'tasks.markComplete': 'Mark Complete',
+  'tasks.completedAt': 'Completed at',
+  'tasks.createdAt': 'Created at',
+  'tasks.confirmDelete': 'Confirm delete task?',
+  'tasks.quickAddToPlan': 'Quick Add to Plan',
+  'tasks.timeline': 'Timeline',
+  'tasks.subtaskAdded': 'Subtask added',
+  'tasks.subtaskDeleted': 'Subtask deleted',
+  'tasks.selectTask': 'Select Task',
+  'tasks.noTaskSelected': 'No task selected',
+  'tasks.unplannedTasks': 'Unplanned Tasks',
+  'tasks.viewDetails': 'View Details',
+  'tasks.tasks': 'tasks',
+  'tasks.description': 'Description',
+  'tasks.descriptionPlaceholder': 'Enter task description...',
+
+  // Common English
+  'common.back': 'Back',
+  'common.startTask': 'Start Task',
+  'common.enterTaskName': 'Enter task name',
+  'common.required': 'Required',
+  'common.close': 'Close',
+  'common.clear': 'Clear',
+  'common.clearing': 'Clearing...',
+  'common.failed': 'Failed',
+  'common.unknown': 'Unknown',
+  'common.other': 'Other',
+  'common.due': 'Due',
+  'common.noDeadline': 'No deadline',
+  'common.days': '{count} days',
+  'common.status': 'Status',
+  'common.category': 'Category',
+  'common.minutes': 'min',
+  'common.start': 'Start',
+  'common.stop': 'Stop',
+  'common.reset': 'Reset',
+  'common.pause': 'Pause',
+  'common.resume': 'Resume',
+  'common.greatJob': 'Great job!',
+
+  // Status English
+  'status.pending': 'Pending',
+  'status.inProgress': 'In Progress',
+  'status.completed': 'Completed',
+
+  // Categories English
+  'categories.study': 'Study',
+  'categories.work': 'Work',
+  'categories.reading': 'Reading',
+  'categories.exercise': 'Exercise',
+  'categories.other': 'Other',
+
+  // Dashboard English
+  'dashboard.createJourney': 'Create your learning plan',
 
   // Pomodoro
   'pomodoro.title': 'Pomodoro',
@@ -531,24 +601,7 @@ const en: Record<string, string> = {
   'recycle.taskPermanentlyDeleted': 'Task permanently deleted',
   'recycle.tip': 'Tips',
   'recycle.tipContent': 'Deleted tasks are kept for 30 days in recycle bin. Remember to restore tasks you need before they are automatically removed.',
-  
-  // Additional translations for conditional rendering
-  'common.clearing': 'Clearing...',
-  'common.pleaseEnter': 'Please enter {content}',
-  'common.failed': 'Failed',
-  'common.unknown': 'Unknown',
-  'common.other': 'Other',
-  'common.due': 'Due',
-  'common.noDeadline': 'No deadline',
-  'common.required': 'required',
-  'common.greatJob': 'Great job! Task completed',
-  'common.days': '{count} days',
-  'common.enterTaskName': 'Enter task name',
-  'common.status': 'Status',
-  'common.category': 'Category',
-  'common.startTask': 'Start Task',
-  'common.minutes': 'min',
-  'common.planningTip': 'Choose a template to get started quickly',
+  'recycle.confirmClearAll': 'Are you sure you want to clear all? This action cannot be undone.',
   
   // Priority
   'priority.high': 'High',
@@ -556,11 +609,6 @@ const en: Record<string, string> = {
   'priority.low': 'Low',
   
   // Categories
-  'category.学习': 'Study',
-  'category.工作': 'Work',
-  'category.阅读': 'Reading',
-  'category.运动': 'Exercise',
-  'category.其他': 'Other',
   'category.study': 'Study',
   'category.work': 'Work',
   'category.reading': 'Reading',
@@ -581,13 +629,7 @@ const en: Record<string, string> = {
   'plans.templates.study': 'Study\n1. Complete math homework\n2. Review English vocabulary\n3. Read for 30 minutes',
   'plans.templates.preview': 'Preview\n1. Preview next lesson\n2. Organize notes\n3. Practice exercises',
   'plans.templates.morning': 'Morning Routine\n1. Morning reading 30 min\n2. Online course\n3. Review weekly key points',
-  
-  // Recycle page
-  'recycle.confirmClearAll': 'Are you sure you want to clear all? This action cannot be undone.',
-  
-  // Dashboard
-  'dashboard.noDeadline': 'No deadline',
-  'dashboard.createJourney': 'Create a new study task to start your learning journey',
+  'common.planningTip': 'Choose a template to get started quickly',
 };
 
 const translations = { 'zh-CN': zh, 'en': en };

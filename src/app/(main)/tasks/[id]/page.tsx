@@ -164,7 +164,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         if (task) {
           const completedCount = updatedSubtasks.filter(s => s.completed === 1).length;
           const total = updatedSubtasks.length;
-          const progress = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+          const progress = total > 0 ? Math.min(100, Math.round((completedCount / total) * 100)) : 0;
           setTask({
             ...task,
             subtask_completed: completedCount,
@@ -204,7 +204,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         if (task) {
           const completedCount = newSubtasks.filter(s => s.completed === 1).length;
           const total = newSubtasks.length;
-          const progress = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+          const progress = total > 0 ? Math.min(100, Math.round((completedCount / total) * 100)) : 0;
           setTask({
             ...task,
             subtask_total: total,
@@ -236,7 +236,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
         if (task) {
           const completedCount = newSubtasks.filter(s => s.completed === 1).length;
           const total = newSubtasks.length;
-          const progress = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+          const progress = total > 0 ? Math.min(100, Math.round((completedCount / total) * 100)) : 0;
           setTask({
             ...task,
             subtask_total: total,
@@ -442,8 +442,8 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
   const priorityConfig = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
   const statusConfig = STATUS_CONFIG[task.status] || STATUS_CONFIG.pending;
-  const subtaskProgress = task.subtask_total > 0 
-    ? Math.round((task.subtask_completed / task.subtask_total) * 100) 
+  const subtaskProgress = (task.subtask_total || 0) > 0 
+    ? Math.min(100, Math.round(((task.subtask_completed || 0) / (task.subtask_total || 1)) * 100)) 
     : 0;
   const isOverdue = task.deadline && isPast(new Date(task.deadline)) && task.status !== 'completed';
 

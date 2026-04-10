@@ -37,7 +37,7 @@ export async function GET(
 
     const completedCount = subtasks.filter((s: any) => s.completed === 1).length;
     const totalCount = subtasks.length;
-    const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+    const progress = totalCount > 0 ? Math.min(100, Math.round((completedCount / totalCount) * 100)) : 0;
 
     return NextResponse.json<ApiResponse>({
       success: true,

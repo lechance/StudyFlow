@@ -322,7 +322,7 @@ export default function TasksPage() {
   const renderTaskCard = (task: any, showPlanInfo: boolean = false, isTodayTask: boolean = false) => {
     const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
     const hasSubtasks = (task.subtask_total || 0) > 0;
-    const subtaskProgress = task.subtask_progress || 0;
+    const subtaskProgress = Math.min(100, task.subtask_progress || 0);
     const deadlineInfo = getDeadlineInfo(task);
     const isCompleted = task.status === 'completed';
     const completedSubtasks = task.subtask_completed || 0;

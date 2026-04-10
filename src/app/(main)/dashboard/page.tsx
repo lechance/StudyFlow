@@ -52,9 +52,9 @@ export default function DashboardPage() {
   ).length;
   const highPriorityTasks = tasks.filter(t => t.priority === 'high' && t.status !== 'completed').length;
 
-  // Today's plan progress
-  const todayProgress = stats?.today?.planned_tasks > 0 
-    ? Math.round((stats?.today?.completed_tasks / stats?.today?.planned_tasks) * 100)
+  // Today's plan progress - with upper limit protection
+  const todayProgress = (stats?.today?.planned_tasks || 0) > 0 
+    ? Math.min(100, Math.round(((stats?.today?.completed_tasks || 0) / (stats?.today?.planned_tasks || 1)) * 100))
     : 0;
 
   return (
