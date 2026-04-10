@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { verifyPassword, createSession, setSessionCookie, initSessionsTable } from '@/lib/auth';
+import { verifyPassword, createSession, setSessionCookieToResponse, initSessionsTable } from '@/lib/auth';
 import type { ApiResponse } from '@/lib/types';
 
 // 初始化 sessions 表
@@ -57,11 +57,9 @@ export async function POST(request: NextRequest) {
     // 创建会话
     const sessionId = await createSession(user.id);
     console.log('Session created:', sessionId);
-    
-    await setSessionCookie(sessionId);
-    console.log('Session cookie set');
 
-    return NextResponse.json<ApiResponse>({
+    // 使用 NextResponse 设置 cookie
+    const response = NextResponse.json<ApiResponse>({
       success: true,
       data: {
         id: user.id,
@@ -73,6 +71,11 @@ export async function POST(request: NextRequest) {
       },
       message: '登录成功'
     });
+    
+    setSessionCookieToResponse(response, sessionId);
+    console.log('Session cookie set');
+
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json<ApiResponse>({

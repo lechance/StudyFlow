@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
 import { getDb } from './db';
 import type { User } from './types';
 
@@ -17,15 +18,33 @@ export async function createSession(userId: string): Promise<string> {
   return sessionId;
 }
 
-export async function setSessionCookie(sessionId: string) {
-  const cookieStore = await cookies();
-  cookieStore.set(SESSION_COOKIE_NAME, sessionId, {
+// 设置 session cookie 到 response
+export function setSessionCookieToResponse(response: NextResponse, sessionId: string) {
+  response.cookies.set(SESSION_COOKIE_NAME, sessionId, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/'
   });
+}
+
+// 在 API Route 中使用的设置 cookie 函数
+export async function setSessionCookie(sessionId: string): Promise<{ cookieHeader: string }> {
+  const cookieStore = await cookies();
+  const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    maxAge: 60 * 60 * 24 * 7, // 7 days
+    path: '/'
+  };
+  
+  cookieStore.set(SESSION_COOKIE_NAME, sessionId, cookieOptions);
+  
+  // 返回 cookie 字符串，手动设置到响应头
+  const serialized = `${SESSION_COOKIE_NAME}=${sessionId}; Path=/; Max-Age=${cookieOptions.maxAge}; HttpOnly${cookieOptions.secure ? '; Secure' : ''}; SameSite=${cookieOptions.sameSite}`;
+  return { cookieHeader: serialized };
 }
 
 export async function getSessionCookie(): Promise<string | undefined> {

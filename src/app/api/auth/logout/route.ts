@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getSessionCookie, deleteSession, clearSessionCookie, initSessionsTable } from '@/lib/auth';
+import { getSessionCookie, deleteSession, initSessionsTable } from '@/lib/auth';
 import type { ApiResponse } from '@/lib/types';
+
+const SESSION_COOKIE_NAME = 'study_session';
 
 // 初始化 sessions 表
 initSessionsTable();
@@ -12,12 +14,16 @@ export async function POST() {
     if (sessionId) {
       await deleteSession(sessionId);
     }
-    await clearSessionCookie();
 
-    return NextResponse.json<ApiResponse>({
+    const response = NextResponse.json<ApiResponse>({
       success: true,
       message: '登出成功'
     });
+    
+    // 清除 cookie
+    response.cookies.delete(SESSION_COOKIE_NAME);
+
+    return response;
   } catch (error) {
     console.error('Logout error:', error);
     return NextResponse.json<ApiResponse>({

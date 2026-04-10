@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BookOpen, GraduationCap, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
-  const { login, register } = useAuth();
+  const { user, login, register, loading: authLoading } = useAuth();
   const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,6 +20,13 @@ export default function LoginPage() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // 如果用户已登录且加载完成，重定向到 dashboard
+  useEffect(() => {
+    if (mounted && !authLoading && user) {
+      window.location.href = '/dashboard';
+    }
+  }, [mounted, authLoading, user]);
 
   // Login form
   const [loginUsername, setLoginUsername] = useState('');
