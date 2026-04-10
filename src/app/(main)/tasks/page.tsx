@@ -341,7 +341,7 @@ export default function TasksPage() {
         }`}
         onClick={handleCardClick}
       >
-        <CardContent className="p-4">
+        <CardContent className={`p-4 ${hasSubtasks ? 'pb-3' : ''}`}>
           {/* Header Row */}
           <div className="flex items-start gap-3">
             <div onClick={(e) => e.stopPropagation()}>
@@ -466,9 +466,9 @@ export default function TasksPage() {
             </div>
           </div>
 
-          {/* Subtask Progress */}
+          {/* Subtask Progress - At Bottom of Card */}
           {hasSubtasks && (
-            <div className="mt-3 pt-3 border-t border-border/50">
+            <div className="-mx-4 -mb-4 mt-3 px-4 pt-3 pb-3 border-t border-border/50 bg-muted/30 rounded-b-lg">
               <div className="flex items-center justify-between text-xs mb-1.5">
                 <span className="flex items-center gap-1.5 text-muted-foreground">
                   <ListTodo className="w-3.5 h-3.5" />
