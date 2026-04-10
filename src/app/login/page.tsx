@@ -30,17 +30,26 @@ export default function LoginPage() {
   const [regPassword, setRegPassword] = useState('');
   const [regEmail, setRegEmail] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setLoading(true);
     setError('');
     
-    const result = await login(loginUsername, loginPassword);
-    if (result.success) {
-      // 登录成功，跳转到首页
-      window.location.href = '/dashboard';
-    } else {
-      setError(result.error || t('auth.invalidCredentials'));
+    console.log('[Login] Starting login for:', loginUsername);
+    
+    try {
+      const result = await login(loginUsername, loginPassword);
+      console.log('[Login] Result:', result);
+      
+      if (result && result.success) {
+        console.log('[Login] Success, redirecting to /dashboard');
+        window.location.href = '/dashboard';
+      } else {
+        setError(result?.error || t('auth.invalidCredentials'));
+      }
+    } catch (err) {
+      console.error('[Login] Error:', err);
+      setError(t('common.error'));
     }
     
     setLoading(false);
@@ -142,7 +151,11 @@ export default function LoginPage() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button type="submit" className="w-full gradient-bg" disabled={loading}>
+                  <Button 
+                    type="submit" 
+                    className="w-full gradient-bg" 
+                    disabled={loading}
+                  >
                     {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

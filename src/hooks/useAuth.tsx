@@ -46,12 +46,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshUser]);
 
   const login = async (username: string, password: string) => {
-    const res = await authApi.login(username, password);
-    if (res.success) {
-      setUser(res.data);
-      return { success: true };
+    try {
+      const res = await authApi.login(username, password);
+      console.log('[useAuth] Login API response:', res);
+      if (res.success) {
+        setUser(res.data);
+        return { success: true };
+      }
+      return { success: false, error: res.error };
+    } catch (err) {
+      console.error('[useAuth] Login error:', err);
+      return { success: false, error: 'Network error' };
     }
-    return { success: false, error: res.error };
   };
 
   const register = async (username: string, password: string, email?: string) => {
