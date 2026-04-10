@@ -353,14 +353,14 @@ export default function TasksPage() {
                 className="mt-0.5 w-5 h-5"
               />
             </div>
-            <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex-1 min-w-0 space-y-3">
               {/* Title Row */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
                   {isTodayTask && (
                     <Badge className="bg-primary text-xs shrink-0">{t('tasks.today')}</Badge>
                   )}
-                  <span className={`font-semibold text-base truncate ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                  <span className={`font-semibold text-lg truncate ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
                     {task.title}
                   </span>
                 </div>

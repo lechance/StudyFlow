@@ -18,7 +18,6 @@ import {
   Menu,
   Timer,
   Trash2,
-  Users,
   BarChart3,
   Globe
 } from 'lucide-react';
@@ -79,15 +78,6 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
 
       {/* User Info */}
       <div className="p-3 border-t">
-        {user?.role === 'admin' && (
-          <Link
-            href="/admin"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-muted-foreground hover:bg-accent hover:text-accent-foreground mb-2`}
-          >
-            <Users className="w-5 h-5 flex-shrink-0" />
-            {!collapsed && <span className="font-medium">{t('nav.admin')}</span>}
-          </Link>
-        )}
         <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
           <Avatar className="w-9 h-9">
             <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-cyan-500 text-white">
@@ -166,16 +156,6 @@ function MobileNav() {
               </Link>
             );
           })}
-          
-          {user?.role === 'admin' && (
-            <Link
-              href="/admin"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-            >
-              <Users className="w-5 h-5" />
-              <span className="font-medium">{t('nav.admin')}</span>
-            </Link>
-          )}
         </nav>
 
         <div className="p-3 border-t">
