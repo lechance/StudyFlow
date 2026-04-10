@@ -5,7 +5,9 @@ services:
   app:
     build:
       context: .
-      dockerfile: Dockerfile.prod
+      # Use Dockerfile.prod for Alpine-based image (smaller size)
+      # Use Dockerfile.prod.slim for Node.js slim image (better compatibility)
+      dockerfile: ${DOCKERFILE:-Dockerfile.prod}
       # Use cache for faster builds
       cache_from:
         - studyflow:latest
@@ -29,16 +31,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    # Resource limits (optional, uncomment to enable)
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '0.5'
-    #       memory: 512M
-    #     reservations:
-    #       cpus: '0.25'
-    #       memory: 256M
-    # Logging configuration
     logging:
       driver: "json-file"
       options:
@@ -57,8 +49,9 @@ networks:
     driver: bridge
 
 # Usage:
-# 1. Development: docker-compose up -d
-# 2. View logs: docker-compose logs -f
-# 3. Stop: docker-compose down
-# 4. Full rebuild: docker-compose up -d --build
-# 5. With custom port: DEPLOY_RUN_PORT=8080 docker-compose up -d
+# 1. Default (Alpine): docker-compose up -d
+# 2. Slim image: DOCKERFILE=Dockerfile.prod.slim docker-compose up -d --build
+# 3. View logs: docker-compose logs -f
+# 4. Stop: docker-compose down
+# 5. Full rebuild: docker-compose up -d --build
+# 6. With custom port: DEPLOY_RUN_PORT=8080 docker-compose up -d

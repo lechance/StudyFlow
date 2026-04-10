@@ -261,6 +261,57 @@ sudo systemctl start studyflow
 
 ## 故障排除
 
+### Docker 构建失败
+
+如果您遇到 Docker 构建问题，尝试以下解决方案：
+
+#### 方案1：使用 Slim 镜像（推荐用于 better-sqlite3）
+
+```bash
+# 使用 Node.js slim 镜像版本
+DOCKERFILE=Dockerfile.prod.slim docker-compose up -d --build
+```
+
+#### 方案2：清理 Docker 缓存
+
+```bash
+# 清理所有未使用的 Docker 资源
+docker builder prune -a
+
+# 重新构建
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+#### 方案3：检查构建日志
+
+```bash
+# 查看详细构建日志
+docker-compose build --progress=plain
+
+# 如果构建失败，查看具体错误
+docker build -t studyflow -f Dockerfile.prod . --no-cache
+```
+
+### 常见构建错误
+
+#### better-sqlite3 构建失败
+```
+error: could not load detritus.node
+```
+**解决方案**：使用 `Dockerfile.prod.slim` 或确保构建阶段安装了所有必要的构建工具。
+
+#### pnpm-lock.yaml 错误
+```
+ERR_PNPM_LOCKFILE_MISSING_DEPENDENCY
+```
+**解决方案**：确保 `pnpm-lock.yaml` 存在且与 `package.json` 同步：
+```bash
+pnpm install
+git add pnpm-lock.yaml
+git commit -m "Update lockfile"
+```
+
 ### 容器启动失败
 
 ```bash
@@ -282,6 +333,12 @@ ls -la data/
 
 # 修复权限
 chmod 755 data/
+chown -R 1001:1001 data/
+
+# 重置数据库（谨慎使用）
+rm -rf data/*
+docker-compose restart
+``` 755 data/
 chown -R 1001:1001 data/
 
 # 重置数据库（谨慎使用）

@@ -6,13 +6,15 @@
 # ============================================
 FROM node:20-alpine AS deps
 
-# Install build dependencies for native modules (better-sqlite3)
+# Install ALL build dependencies including native module support
 RUN apk add --no-cache \
     libc6-compat \
     python3 \
     make \
     g++ \
-    sqlite-dev
+    sqlite-dev \
+    gcc \
+    musl-dev
 
 WORKDIR /app
 
@@ -22,20 +24,25 @@ RUN npm install -g pnpm@9
 # Copy package files first for better caching
 COPY package.json pnpm-lock.yaml* ./
 
-# Install all dependencies (including devDependencies for build)
-RUN pnpm install --frozen-lockfile
+# Pre-build native modules for the current architecture
+RUN pnpm install --frozen-lockfile --ignore-scripts=false
+
+# Rebuild better-sqlite3 for alpine
+RUN pnpm rebuild better-sqlite3 || true
 
 # ============================================
 # Stage 2: Application Build
 # ============================================
 FROM node:20-alpine AS builder
 
-# Install build dependencies
+# Install ALL build dependencies
 RUN apk add --no-cache \
     python3 \
     make \
     g++ \
-    sqlite-dev
+    sqlite-dev \
+    gcc \
+    musl-dev
 
 WORKDIR /app
 
@@ -48,10 +55,11 @@ COPY . .
 # Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+
+# Skip TypeScript type checking during build for faster builds
 ENV NEXT_SKIP_TYPECHECKING=1
 
-# Build the Next.js application
-# The standalone output mode creates a standalone Node.js server
+# Build the Next.js application with standalone output
 RUN pnpm build
 
 # ============================================
@@ -59,10 +67,9 @@ RUN pnpm build
 # ============================================
 FROM node:20-alpine AS runner
 
-# Install runtime dependencies only
+# Install runtime dependencies only (matching deps stage architecture)
 RUN apk add --no-cache \
     sqlite-libs \
-    curl \
     && rm -rf /var/cache/apk/*
 
 WORKDIR /app
@@ -76,10 +83,16 @@ RUN mkdir -p /app/data /app/public && \
     chown -R nextjs:nodejs /app
 
 # Copy built application from builder stage
+# Next.js standalone output includes server.js
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./
+
+# Copy native modules from deps stage
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/better-sqlite3 ./node_modules/better-sqlite3/
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/bindings ./node_modules/bindings/
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/file-uri-to-path ./node_modules/file-uri-to-path/
 
 # Copy and prepare data directory (empty initially, use volume for persistence)
 RUN chown -R nextjs:nodejs /app/data
