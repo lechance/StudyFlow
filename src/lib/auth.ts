@@ -19,10 +19,9 @@ export async function createSession(userId: string): Promise<string> {
 
 export async function setSessionCookie(sessionId: string) {
   const cookieStore = await cookies();
-  // Always set secure=false for HTTP compatibility; the cookie will still be httpOnly for security
   cookieStore.set(SESSION_COOKIE_NAME, sessionId, {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/'

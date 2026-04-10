@@ -11,17 +11,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
   BookOpen,
+  Calendar,
   Home,
   LogOut,
   Menu,
@@ -29,21 +20,13 @@ import {
   Trash2,
   Users,
   BarChart3,
-  Globe,
-  Settings,
-  User
+  Globe
 } from 'lucide-react';
-import { api } from '@/lib/api';
-import { toast } from 'sonner';
 
 function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
   const pathname = usePathname();
-  const { user, logout, refreshUser } = useAuth();
+  const { user, logout } = useAuth();
   const { t } = useLanguage();
-  const [showUserDialog, setShowUserDialog] = useState(false);
-  const [editUsername, setEditUsername] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
 
   const navItems = [
     { label: t('nav.home'), href: '/dashboard', icon: Home },
@@ -53,59 +36,116 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
     { label: t('nav.recycle'), href: '/recycle', icon: Trash2 },
   ];
 
-  const openUserDialog = () => {
-    setEditUsername(user?.username || '');
-    setEditEmail(user?.email || '');
-    setShowUserDialog(true);
-  };
+  return (
+    <aside
+      className={`hidden lg:sticky lg:top-0 lg:flex flex-col h-screen bg-card border-r transition-all duration-300 ${
+        collapsed ? 'w-20' : 'w-64'
+      }`}
+    >
+      {/* Logo */}
+      <div className="flex items-center gap-3 h-16 px-4 border-b">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
+          <BookOpen className="w-5 h-5 text-white" />
+        </div>
+        {!collapsed && (
+          <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
+            StudyFlow
+          </span>
+        )}
+      </div>
 
-  const handleSaveUser = async () => {
-    if (!editUsername.trim()) {
-      toast.error(t('auth.usernameRequired'));
-      return;
-    }
+      {/* Navigation */}
+      <nav className="flex-1 p-3 space-y-1">
+        {navItems.map((item) => {
+          const isActive = pathname === item.href;
+          const Icon = item.icon;
+          
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                isActive
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              }`}
+            >
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              {!collapsed && <span className="font-medium">{item.label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
 
-    setIsSaving(true);
-    try {
-      const res = await api.post<any>('/users/profile', {
-        username: editUsername.trim(),
-        email: editEmail.trim() || undefined
-      });
-      
-      if (res.success) {
-        toast.success(t('common.success'));
-        await refreshUser();
-        setShowUserDialog(false);
-      } else {
-        toast.error(res.error || t('common.error'));
-      }
-    } catch {
-      toast.error(t('common.error'));
-    } finally {
-      setIsSaving(false);
-    }
-  };
+      {/* User Info */}
+      <div className="p-3 border-t">
+        {user?.role === 'admin' && (
+          <Link
+            href="/admin"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-muted-foreground hover:bg-accent hover:text-accent-foreground mb-2`}
+          >
+            <Users className="w-5 h-5 flex-shrink-0" />
+            {!collapsed && <span className="font-medium">{t('nav.admin')}</span>}
+          </Link>
+        )}
+        <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
+          <Avatar className="w-9 h-9">
+            <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-cyan-500 text-white">
+              {user?.username?.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          {!collapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user?.username}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('dashboard.streakDays')}: {user?.streak_days}
+              </p>
+            </div>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          className={`w-full mt-2 text-muted-foreground hover:text-destructive ${collapsed ? 'px-2' : ''}`}
+          onClick={logout}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          {!collapsed && t('auth.logout')}
+        </Button>
+      </div>
+    </aside>
+  );
+}
+
+function MobileNav() {
+  const pathname = usePathname();
+  const { user, logout } = useAuth();
+  const { t } = useLanguage();
+
+  const navItems = [
+    { label: t('nav.home'), href: '/dashboard', icon: Home },
+    { label: t('nav.tasks'), href: '/tasks', icon: BookOpen },
+    { label: t('nav.pomodoro'), href: '/pomodoro', icon: Timer },
+    { label: t('nav.stats'), href: '/stats', icon: BarChart3 },
+    { label: t('nav.recycle'), href: '/recycle', icon: Trash2 },
+  ];
 
   return (
-    <>
-      <aside
-        className={`hidden lg:sticky lg:top-0 lg:flex flex-col h-screen bg-card border-r transition-all duration-300 ${
-          collapsed ? 'w-20' : 'w-64'
-        }`}
-      >
-        {/* Logo */}
-        <div className="flex items-center gap-3 h-16 px-4 border-b">
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="outline" size="icon" className="lg:hidden">
+          <Menu className="h-5 w-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-72 p-0">
+        <div className="flex items-center gap-3 p-4 border-b">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
             <BookOpen className="w-5 h-5 text-white" />
           </div>
-          {!collapsed && (
-            <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
-              StudyFlow
-            </span>
-          )}
+          <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
+            StudyFlow
+          </span>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
@@ -121,299 +161,48 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 }`}
               >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                {!collapsed && <span className="font-medium">{item.label}</span>}
+                <Icon className="w-5 h-5" />
+                <span className="font-medium">{item.label}</span>
               </Link>
             );
           })}
-        </nav>
-
-        {/* User Info */}
-        <div className="p-3 border-t">
+          
           {user?.role === 'admin' && (
             <Link
               href="/admin"
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-muted-foreground hover:bg-accent hover:text-accent-foreground mb-2`}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-muted-foreground hover:bg-accent hover:text-accent-foreground"
             >
-              <Users className="w-5 h-5 flex-shrink-0" />
-              {!collapsed && <span className="font-medium">{t('nav.admin')}</span>}
+              <Users className="w-5 h-5" />
+              <span className="font-medium">{t('nav.admin')}</span>
             </Link>
           )}
-          <div 
-            className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''} cursor-pointer hover:bg-accent/50 rounded-lg p-1 transition-colors`}
-            onClick={openUserDialog}
-          >
+        </nav>
+
+        <div className="p-3 border-t">
+          <div className="flex items-center gap-3 mb-3">
             <Avatar className="w-9 h-9">
               <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-cyan-500 text-white">
                 {user?.username?.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            {!collapsed && (
-              <div className="flex-1 min-w-0 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium truncate">{user?.username}</p>
-                  <p className="text-xs text-muted-foreground">
-                    <Settings className="w-3 h-3 inline mr-1" />
-                    {t('common.settings')}
-                  </p>
-                </div>
-              </div>
-            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{user?.username}</p>
+              <p className="text-xs text-muted-foreground">
+                {t('dashboard.streakDays')}: {user?.streak_days}
+              </p>
+            </div>
           </div>
           <Button
             variant="ghost"
-            className={`w-full mt-2 text-muted-foreground hover:text-destructive ${collapsed ? 'px-2' : ''}`}
+            className="w-full text-muted-foreground hover:text-destructive"
             onClick={logout}
           >
             <LogOut className="w-4 h-4 mr-2" />
-            {!collapsed && t('auth.logout')}
+            {t('auth.logout')}
           </Button>
         </div>
-      </aside>
-
-      {/* User Profile Dialog */}
-      <Dialog open={showUserDialog} onOpenChange={setShowUserDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <User className="w-5 h-5" />
-              {t('profile.title')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('profile.description')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex justify-center mb-4">
-              <Avatar className="w-20 h-20">
-                <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-cyan-500 text-white text-2xl">
-                  {user?.username?.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-username">{t('auth.username')}</Label>
-              <Input
-                id="edit-username"
-                value={editUsername}
-                onChange={(e) => setEditUsername(e.target.value)}
-                placeholder={t('login.enterUsername')}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-email">{t('profile.email')}</Label>
-              <Input
-                id="edit-email"
-                type="email"
-                value={editEmail}
-                onChange={(e) => setEditEmail(e.target.value)}
-                placeholder={t('profile.emailPlaceholder')}
-              />
-            </div>
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p>{t('dashboard.streakDays')}: <span className="font-medium text-foreground">{user?.streak_days}</span></p>
-              <p>{t('dashboard.totalHours')}: <span className="font-medium text-foreground">{Math.floor((user?.total_study_time || 0) / 60)}h {(user?.total_study_time || 0) % 60}m</span></p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowUserDialog(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button onClick={handleSaveUser} disabled={isSaving}>
-              {isSaving ? t('common.saving') : t('common.save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-
-function MobileNav() {
-  const pathname = usePathname();
-  const { user, logout, refreshUser } = useAuth();
-  const { t } = useLanguage();
-  const [showUserDialog, setShowUserDialog] = useState(false);
-  const [editUsername, setEditUsername] = useState('');
-  const [editEmail, setEditEmail] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-
-  const navItems = [
-    { label: t('nav.home'), href: '/dashboard', icon: Home },
-    { label: t('nav.tasks'), href: '/tasks', icon: BookOpen },
-    { label: t('nav.pomodoro'), href: '/pomodoro', icon: Timer },
-    { label: t('nav.stats'), href: '/stats', icon: BarChart3 },
-    { label: t('nav.recycle'), href: '/recycle', icon: Trash2 },
-  ];
-
-  const openUserDialog = () => {
-    setEditUsername(user?.username || '');
-    setEditEmail(user?.email || '');
-    setShowUserDialog(true);
-  };
-
-  const handleSaveUser = async () => {
-    if (!editUsername.trim()) {
-      toast.error(t('auth.usernameRequired'));
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const res = await api.post<any>('/users/profile', {
-        username: editUsername.trim(),
-        email: editEmail.trim() || undefined
-      });
-      
-      if (res.success) {
-        toast.success(t('common.success'));
-        await refreshUser();
-        setShowUserDialog(false);
-      } else {
-        toast.error(res.error || t('common.error'));
-      }
-    } catch {
-      toast.error(t('common.error'));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <>
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button variant="outline" size="icon" className="lg:hidden">
-            <Menu className="h-5 w-5" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="w-72 p-0">
-          <div className="flex items-center gap-3 p-4 border-b">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 bg-clip-text text-transparent">
-              StudyFlow
-            </span>
-          </div>
-
-          <nav className="flex-1 p-3 space-y-1">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
-              
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-md'
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-medium">{item.label}</span>
-                </Link>
-              );
-            })}
-            
-            {user?.role === 'admin' && (
-              <Link
-                href="/admin"
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              >
-                <Users className="w-5 h-5" />
-                <span className="font-medium">{t('nav.admin')}</span>
-              </Link>
-            )}
-          </nav>
-
-          <div className="p-3 border-t">
-            <div 
-              className="flex items-center gap-3 mb-3 cursor-pointer hover:bg-accent/50 rounded-lg p-1 transition-colors"
-              onClick={openUserDialog}
-            >
-              <Avatar className="w-9 h-9">
-                <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-cyan-500 text-white">
-                  {user?.username?.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user?.username}</p>
-                <p className="text-xs text-muted-foreground">
-                  <Settings className="w-3 h-3 inline mr-1" />
-                  {t('common.settings')}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              className="w-full text-muted-foreground hover:text-destructive"
-              onClick={logout}
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              {t('auth.logout')}
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* User Profile Dialog */}
-      <Dialog open={showUserDialog} onOpenChange={setShowUserDialog}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <User className="w-5 h-5" />
-              {t('profile.title')}
-            </DialogTitle>
-            <DialogDescription>
-              {t('profile.description')}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex justify-center mb-4">
-              <Avatar className="w-20 h-20">
-                <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-cyan-500 text-white text-2xl">
-                  {user?.username?.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="mobile-edit-username">{t('auth.username')}</Label>
-              <Input
-                id="mobile-edit-username"
-                value={editUsername}
-                onChange={(e) => setEditUsername(e.target.value)}
-                placeholder={t('login.enterUsername')}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="mobile-edit-email">{t('profile.email')}</Label>
-              <Input
-                id="mobile-edit-email"
-                type="email"
-                value={editEmail}
-                onChange={(e) => setEditEmail(e.target.value)}
-                placeholder={t('profile.emailPlaceholder')}
-              />
-            </div>
-            <div className="text-sm text-muted-foreground space-y-1">
-              <p>{t('dashboard.streakDays')}: <span className="font-medium text-foreground">{user?.streak_days}</span></p>
-              <p>{t('dashboard.totalHours')}: <span className="font-medium text-foreground">{Math.floor((user?.total_study_time || 0) / 60)}h {(user?.total_study_time || 0) % 60}m</span></p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowUserDialog(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button onClick={handleSaveUser} disabled={isSaving}>
-              {isSaving ? t('common.saving') : t('common.save')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+      </SheetContent>
+    </Sheet>
   );
 }
 

@@ -1,82 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import type { ApiResponse, User } from '@/lib/types';
+import type { ApiResponse } from '@/lib/types';
 
-// 更新当前用户信息
-export async function PUT(
+// 删除用户（管理员）
+export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
+    const user = await getCurrentUser();
+    if (!user) {
       return NextResponse.json<ApiResponse>({
         success: false,
         error: '请先登录'
       }, { status: 401 });
     }
 
-    const { id } = await params;
-    
-    // 只能修改自己的信息
-    if (currentUser.id !== id && currentUser.role !== 'admin') {
+    if (user.role !== 'admin') {
       return NextResponse.json<ApiResponse>({
         success: false,
         error: '权限不足'
       }, { status: 403 });
     }
 
-    const body = await request.json();
+    const { id } = await params;
     const db = getDb();
 
-    // 检查用户名是否已被其他用户使用
-    if (body.username) {
-      const existingUser = db.prepare(
-        'SELECT id FROM users WHERE username = ? AND id != ?'
-      ).get(body.username, id);
-      
-      if (existingUser) {
-        return NextResponse.json<ApiResponse>({
-          success: false,
-          error: '用户名已被使用'
-        }, { status: 400 });
-      }
+    // 不允许删除自己
+    if (id === user.id) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: '不能删除自己'
+      }, { status: 400 });
     }
 
-    const updates: string[] = [];
-    const values: any[] = [];
-
-    if (body.username !== undefined) {
-      updates.push('username = ?');
-      values.push(body.username);
-    }
-    if (body.email !== undefined) {
-      updates.push('email = ?');
-      values.push(body.email || null);
-    }
-
-    if (updates.length > 0) {
-      updates.push('updated_at = datetime(\'now\')');
-      values.push(id);
-      
-      db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...values);
-    }
-
-    // 获取更新后的用户信息
-    const updatedUser = db.prepare(
-      'SELECT id, username, email, role, streak_days, total_study_time, created_at FROM users WHERE id = ?'
-    ).get(id) as User;
+    // 删除用户的所有数据
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(id);
+    db.prepare('DELETE FROM tasks WHERE user_id = ?').run(id);
+    db.prepare('DELETE FROM study_records WHERE user_id = ?').run(id);
+    db.prepare('DELETE FROM daily_plans WHERE user_id = ?').run(id);
+    db.prepare('DELETE FROM recycle_bin WHERE user_id = ?').run(id);
+    db.prepare('DELETE FROM pomodoro_settings WHERE user_id = ?').run(id);
+    db.prepare('DELETE FROM users WHERE id = ?').run(id);
 
     return NextResponse.json<ApiResponse>({
       success: true,
-      data: updatedUser
+      message: '用户已删除'
     });
   } catch (error) {
-    console.error('Update user error:', error);
+    console.error('Delete user error:', error);
     return NextResponse.json<ApiResponse>({
       success: false,
-      error: '更新用户信息失败'
+      error: '删除用户失败'
     }, { status: 500 });
   }
 }

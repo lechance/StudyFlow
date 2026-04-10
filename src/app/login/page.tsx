@@ -1,20 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BookOpen, GraduationCap, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const { login, register } = useAuth();
-  const { t } = useLanguage();
-  const [isLogin, setIsLogin] = useState(true);
+  const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Login form
   const [loginUsername, setLoginUsername] = useState('');
@@ -25,22 +30,26 @@ export default function LoginPage() {
   const [regPassword, setRegPassword] = useState('');
   const [regEmail, setRegEmail] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!loginUsername || !loginPassword) {
-      setError(t('auth.usernameRequired'));
-      return;
-    }
-    
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setLoading(true);
     setError('');
     
-    const result = await login(loginUsername, loginPassword);
-    if (result.success) {
-      window.location.href = '/dashboard';
-    } else {
-      setError(result.error || t('auth.invalidCredentials'));
+    console.log('[Login] Starting login for:', loginUsername);
+    
+    try {
+      const result = await login(loginUsername, loginPassword);
+      console.log('[Login] Result:', result);
+      
+      if (result && result.success) {
+        console.log('[Login] Success, redirecting to /dashboard');
+        window.location.href = '/dashboard';
+      } else {
+        setError(result?.error || t('auth.invalidCredentials'));
+      }
+    } catch (err) {
+      console.error('[Login] Error:', err);
+      setError(t('common.error'));
     }
     
     setLoading(false);
@@ -48,22 +57,24 @@ export default function LoginPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
     
     if (!regUsername || !regPassword) {
       setError(t('auth.usernameRequired'));
+      setLoading(false);
       return;
     }
     
     if (regPassword.length < 6) {
       setError(t('auth.passwordMinLength'));
+      setLoading(false);
       return;
     }
     
-    setLoading(true);
-    setError('');
-    
     const result = await register(regUsername, regPassword, regEmail || undefined);
     if (result.success) {
+      // 注册成功，跳转到首页
       window.location.href = '/dashboard';
     } else {
       setError(result.error || t('common.error'));
@@ -72,8 +83,13 @@ export default function LoginPage() {
     setLoading(false);
   };
 
+  if (!mounted) {
+    return null;
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-emerald-50 via-cyan-50 to-blue-50">
+      {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-emerald-200/30 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-cyan-200/30 blur-3xl" />
@@ -93,155 +109,137 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <Card className="shadow-xl border-0">
-          {/* Tab Switcher */}
-          <div className="flex border-b">
-            <button
-              type="button"
-              onClick={() => { setIsLogin(true); setError(''); }}
-              className={`flex-1 py-3 text-center font-medium transition-colors ${
-                isLogin 
-                  ? 'text-primary border-b-2 border-primary' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t('auth.login')}
-            </button>
-            <button
-              type="button"
-              onClick={() => { setIsLogin(false); setError(''); }}
-              className={`flex-1 py-3 text-center font-medium transition-colors ${
-                !isLogin 
-                  ? 'text-primary border-b-2 border-primary' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t('auth.register')}
-            </button>
-          </div>
-
-          {isLogin ? (
-            // Login Form
-            <form onSubmit={handleLogin}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xl">{t('auth.welcomeBack')}</CardTitle>
-                <CardDescription>{t('auth.loginAccount')}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {error && (
-                  <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">
-                    {error}
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="login-username">{t('auth.username')}</Label>
-                  <Input
-                    id="login-username"
-                    placeholder={t('login.enterUsername')}
-                    value={loginUsername}
-                    onChange={(e) => setLoginUsername(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">{t('auth.password')}</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder={t('login.enterPassword')}
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    required
-                  />
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  type="submit" 
-                  className="w-full gradient-bg" 
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {t('common.loading')}
-                    </>
-                  ) : (
-                    <>
-                      <BookOpen className="mr-2 h-4 w-4" />
-                      {t('auth.login')}
-                    </>
+        <Card className="shadow-xl border-0 glass">
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="login">{t('auth.login')}</TabsTrigger>
+              <TabsTrigger value="register">{t('auth.register')}</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="login">
+              <form onSubmit={handleLogin}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xl">{t('auth.welcomeBack')}</CardTitle>
+                  <CardDescription>{t('auth.loginAccount')}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {error && (
+                    <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">
+                      {error}
+                    </div>
                   )}
-                </Button>
-              </CardFooter>
-            </form>
-          ) : (
-            // Register Form
-            <form onSubmit={handleRegister}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-xl">{t('auth.createAccount')}</CardTitle>
-                <CardDescription>{t('auth.startJourney')}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {error && (
-                  <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">
-                    {error}
+                  <div className="space-y-2">
+                    <Label htmlFor="login-username">{t('auth.username')}</Label>
+                    <Input
+                      id="login-username"
+                      placeholder={t('login.enterUsername')}
+                      value={loginUsername}
+                      onChange={(e) => setLoginUsername(e.target.value)}
+                      required
+                    />
                   </div>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="reg-username">{t('auth.username')} *</Label>
-                  <Input
-                    id="reg-username"
-                    placeholder={t('login.enterUsername')}
-                    value={regUsername}
-                    onChange={(e) => setRegUsername(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reg-email">{t('auth.email')} ({t('login.optional')})</Label>
-                  <Input
-                    id="reg-email"
-                    type="email"
-                    placeholder={t('login.enterEmail')}
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="reg-password">{t('auth.password')} *</Label>
-                  <Input
-                    id="reg-password"
-                    type="password"
-                    placeholder={t('login.enterPasswordMin')}
-                    value={regPassword}
-                    onChange={(e) => setRegPassword(e.target.value)}
-                    required
-                    minLength={6}
-                  />
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button type="submit" className="w-full gradient-bg" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {t('common.loading')}
-                    </>
-                  ) : (
-                    <>
-                      <GraduationCap className="mr-2 h-4 w-4" />
-                      {t('auth.register')}
-                    </>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">{t('auth.password')}</Label>
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder={t('login.enterPassword')}
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    type="submit" 
+                    className="w-full gradient-bg" 
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t('common.loading')}
+                      </>
+                    ) : (
+                      <>
+                        <BookOpen className="mr-2 h-4 w-4" />
+                        {t('auth.login')}
+                      </>
+                    )}
+                  </Button>
+                </CardFooter>
+              </form>
+            </TabsContent>
+            
+            <TabsContent value="register">
+              <form onSubmit={handleRegister}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-xl">{t('auth.createAccount')}</CardTitle>
+                  <CardDescription>{t('auth.startJourney')}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {error && (
+                    <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">
+                      {error}
+                    </div>
                   )}
-                </Button>
-              </CardFooter>
-            </form>
-          )}
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-username">{t('auth.username')} *</Label>
+                    <Input
+                      id="reg-username"
+                      placeholder={t('login.enterUsername')}
+                      value={regUsername}
+                      onChange={(e) => setRegUsername(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-email">{t('auth.email')} ({t('login.optional')})</Label>
+                    <Input
+                      id="reg-email"
+                      type="email"
+                      placeholder={t('login.enterEmail')}
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-password">{t('auth.password')} *</Label>
+                    <Input
+                      id="reg-password"
+                      type="password"
+                      placeholder={t('login.enterPasswordMin')}
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button type="submit" className="w-full gradient-bg" disabled={loading}>
+                    {loading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {t('common.loading')}
+                      </>
+                    ) : (
+                      <>
+                        <GraduationCap className="mr-2 h-4 w-4" />
+                        {t('auth.register')}
+                      </>
+                    )}
+                  </Button>
+                </CardFooter>
+              </form>
+            </TabsContent>
+          </Tabs>
         </Card>
 
+        {/* Notice */}
         <p className="text-center text-sm text-muted-foreground mt-4">
-          {isLogin ? t('auth.loginPrompt') : t('auth.alreadyHaveAccount')}
+          {t('auth.loginPrompt')}
         </p>
       </div>
     </div>

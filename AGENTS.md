@@ -48,43 +48,17 @@ StudyFlow 是一款面向学生和职场人的智能学习计划与时间管理 
 │       ├── db.ts                # 数据库连接
 │       └── types.ts             # TypeScript 类型定义
 ├── data/                        # SQLite 数据库目录
-├── backups/                     # 备份文件目录（可选）
 ├── scripts/                     # 构建脚本
 ├── Dockerfile                   # Docker 构建文件
 ├── Dockerfile.prod              # 生产环境 Docker 构建文件
 ├── docker-compose.yml          # Docker Compose 配置
 ├── docker-compose.dev.yml      # 开发环境 Docker Compose 配置
 ├── .dockerignore               # Docker 忽略文件
-├── DEPLOYMENT.md                # 数据存储与迁移指南
+├── DOCKER_DEPLOY.md             # Docker 部署指南
 └── package.json
 ```
 
-## 数据库与存储
-
-### 数据库配置
-- **位置**: `data/study.db`
-- **类型**: SQLite（better-sqlite3）
-- **模式**: WAL 模式（支持并发读写）
-
-### 主要表结构
-| 表名 | 说明 | 关键字段 |
-|------|------|----------|
-| `users` | 用户表 | id, username, password, role |
-| `tasks` | 任务表 | id, user_id, title, description, category, priority, status, plan_date, deadline |
-| `subtasks` | 子任务表 | id, task_id, title, completed |
-| `study_records` | 学习记录 | id, user_id, duration, date |
-| `check_ins` | 打卡记录 | id, user_id, date |
-| `sessions` | 会话表 | id, user_id, expires_at |
-| `recycle_bin` | 回收站 | id, task_data, deleted_at |
-
-### Docker 数据持久化
-```yaml
-# docker-compose.yml
-volumes:
-  - studyflow_data:/app/data  # 命名卷持久化
-```
-
-## 开发命令
+## 核心功能
 
 ### 1. 任务管理（融合版）
 - 创建、编辑、删除任务
