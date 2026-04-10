@@ -350,40 +350,65 @@ export default function TasksPage() {
                 onCheckedChange={(checked) => {
                   handleStatusChange(task.id, checked ? 'completed' : 'pending');
                 }}
-                className="mt-1 w-5 h-5"
+                className="mt-0.5 w-5 h-5"
               />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex-1 min-w-0 space-y-2">
+              {/* Title Row */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 flex-wrap flex-1 min-w-0">
                   {isTodayTask && (
-                    <Badge className="bg-primary text-xs">{t('tasks.today')}</Badge>
+                    <Badge className="bg-primary text-xs shrink-0">{t('tasks.today')}</Badge>
                   )}
-                  <span className={`font-semibold text-base ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                  <span className={`font-semibold text-base truncate ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
                     {task.title}
                   </span>
                 </div>
               </div>
               
-              {/* Meta Info Row */}
-              <div className="flex items-center gap-3 flex-wrap text-sm">
-                <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs`}>
+              {/* Meta Info Row - Compact Badges */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs gap-1`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
                   {t(priorityConfig?.labelKey || 'priority.medium')}
                 </Badge>
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="outline" className="text-xs gap-1">
+                  {task.category === 'study' && '📚'}
+                  {task.category === 'work' && '💼'}
+                  {task.category === 'reading' && '📖'}
+                  {task.category === 'exercise' && '🏃'}
+                  {task.category === 'other' && '📌'}
                   {t(`category.${task.category}`)}
                 </Badge>
                 {task.estimated_time && (
-                  <span className="flex items-center gap-1 text-muted-foreground text-xs">
+                  <Badge variant="outline" className="text-xs gap-1">
                     <Timer className="w-3 h-3" />
                     {task.estimated_time}{t('common.minutes')}
-                  </span>
+                  </Badge>
                 )}
               </div>
+              
+              {/* Deadline & Plan Info Row */}
+              {(deadlineInfo || task.plan_date) && (
+                <div className="flex items-center gap-3">
+                  {deadlineInfo && (
+                    <Badge variant="outline" className={`${deadlineInfo.color} border-current text-xs gap-1 font-normal`}>
+                      {deadlineInfo.icon}
+                      {t('tasks.deadline')}: {deadlineInfo.text}
+                    </Badge>
+                  )}
+                  {task.plan_date && (
+                    <Badge variant="outline" className="text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700 text-xs gap-1 font-normal">
+                      <CalendarDays className="w-3 h-3" />
+                      {t('tasks.planDate')}: {format(new Date(task.plan_date), 'MM/dd')}
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
             
             {/* Quick Actions */}
-            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
               {!task.plan_date && !isCompleted && (
                 <Button
                   variant="ghost"
@@ -441,45 +466,29 @@ export default function TasksPage() {
             </div>
           </div>
 
-          {/* Deadline & Plan Info */}
-          {showPlanInfo && (deadlineInfo || task.plan_date) && (
-            <div className="flex items-center gap-4 mt-3 px-1">
-              {deadlineInfo && (
-                <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${deadlineInfo.color}`}>
-                  {deadlineInfo.icon}
-                  <span>{t('tasks.deadline')}: {deadlineInfo.text}</span>
-                </div>
-              )}
-              {task.plan_date && (
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">
-                  <CalendarDays className="w-3 h-3" />
-                  <span>{t('tasks.planDate')}: {format(new Date(task.plan_date), 'MM/dd')}</span>
-                </div>
-              )}
+          {/* Subtask Progress */}
+          {hasSubtasks && (
+            <div className="mt-3 pt-3 border-t border-border/50">
+              <div className="flex items-center justify-between text-xs mb-1.5">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <ListTodo className="w-3.5 h-3.5" />
+                  <span>{t('tasks.subtasks')}: {completedSubtasks}/{totalSubtasks}</span>
+                </span>
+                <span className={`font-semibold ${subtaskProgress === 100 ? 'text-emerald-600' : 'text-foreground'}`}>
+                  {subtaskProgress}%
+                </span>
+              </div>
+              <div className="h-2 bg-muted/70 rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    subtaskProgress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-400'
+                  }`}
+                  style={{ width: `${subtaskProgress}%` }}
+                />
+              </div>
             </div>
           )}
         </CardContent>
-        
-        {/* Footer: Subtask Progress */}
-        {hasSubtasks && (
-          <div className="px-4 pb-4">
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-              <span className="flex items-center gap-1">
-                <ListTodo className="w-3 h-3" />
-                {completedSubtasks}/{totalSubtasks} {t('tasks.subtasks')}
-              </span>
-              <span className="font-medium">{subtaskProgress}%</span>
-            </div>
-            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-              <div 
-                className={`h-full rounded-full transition-all duration-300 ${
-                  subtaskProgress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-500 to-cyan-500'
-                }`}
-                style={{ width: `${subtaskProgress}%` }}
-              />
-            </div>
-          </div>
-        )}
       </Card>
     );
   };
