@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTasks } from '@/hooks/useTasks';
-import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
   DialogContent,
@@ -53,19 +51,15 @@ import {
   Clock,
   CheckCircle2,
   Circle,
-  PlayCircle,
   Sparkles,
   ListTodo,
-  X,
   Pin,
   PinOff,
   Target,
-  ChevronRight,
   AlertCircle,
   CalendarDays,
   Timer
 } from 'lucide-react';
-import { api } from '@/lib/api';
 import { tasksApi } from '@/lib/api';
 import { format, differenceInDays, isPast, isToday, isTomorrow, addDays } from 'date-fns';
 import { toast } from 'sonner';
@@ -294,49 +288,6 @@ export default function TasksPage() {
     return diffDays;
   };
 
-  // Render deadline badge with remaining days
-  const renderDeadlineBadge = (task: any) => {
-    const days = getRemainingDays(task);
-    if (days === null) return null;
-    
-    if (days < 0) {
-      // Overdue
-      return (
-        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
-          <AlertCircle className="w-4 h-4" />
-          <span className="font-bold text-lg">{Math.abs(days)}</span>
-          <span className="text-xs">{t('tasks.daysOverdue')}</span>
-        </div>
-      );
-    }
-    if (days === 0) {
-      // Today
-      return (
-        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400">
-          <Clock className="w-4 h-4" />
-          <span className="font-bold text-lg">{t('tasks.today')}</span>
-        </div>
-      );
-    }
-    if (days === 1) {
-      // Tomorrow
-      return (
-        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400">
-          <Calendar className="w-4 h-4" />
-          <span className="font-bold text-lg">{t('tasks.tomorrow')}</span>
-        </div>
-      );
-    }
-    // More days
-    return (
-      <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">
-        <Timer className="w-4 h-4" />
-        <span className="font-bold text-lg">{days}</span>
-        <span className="text-xs">{t('tasks.daysLeftShort')}</span>
-      </div>
-    );
-  };
-
   // Get deadline info
   const getDeadlineInfo = (task: any) => {
     const deadline = task.deadline || task.plan_date;
@@ -402,10 +353,29 @@ export default function TasksPage() {
     const isCompleted = task.status === 'completed';
     const completedSubtasks = task.subtask_completed || 0;
     const totalSubtasks = task.subtask_total || 0;
+    const remainingDays = getRemainingDays(task);
 
     // Navigate to task detail page
     const handleCardClick = () => {
       router.push(`/tasks/${task.id}`);
+    };
+
+    // Calculate urgency color for remaining days
+    const getUrgencyColor = () => {
+      if (remainingDays === null) return '';
+      if (remainingDays < 0) return 'text-red-600 bg-red-50 dark:bg-red-950/40';
+      if (remainingDays === 0) return 'text-orange-600 bg-orange-50 dark:bg-orange-950/40';
+      if (remainingDays === 1) return 'text-yellow-600 bg-yellow-50 dark:bg-yellow-950/40';
+      if (remainingDays <= 3) return 'text-amber-600 bg-amber-50 dark:bg-amber-950/40';
+      return 'text-blue-600 bg-blue-50 dark:bg-blue-950/40';
+    };
+
+    const getUrgencyText = () => {
+      if (remainingDays === null) return '';
+      if (remainingDays < 0) return `${Math.abs(remainingDays)} ${t('tasks.daysOverdueShort')}`;
+      if (remainingDays === 0) return t('tasks.today');
+      if (remainingDays === 1) return t('tasks.tomorrow');
+      return `${remainingDays} ${t('tasks.daysLeftShort')}`;
     };
 
     return (
@@ -417,55 +387,32 @@ export default function TasksPage() {
         onClick={handleCardClick}
       >
         <CardContent className="p-4">
-          {/* Header Row */}
-          <div className="flex items-start gap-3">
+          {/* Row 1: Checkbox + Task Name + Actions */}
+          <div className="flex items-center gap-3">
             <div onClick={(e) => e.stopPropagation()}>
               <Checkbox
                 checked={isCompleted}
                 onCheckedChange={(checked) => {
                   handleStatusChange(task.id, checked ? 'completed' : 'pending');
                 }}
-                className="mt-1 w-5 h-5"
+                className="w-5 h-5"
               />
             </div>
+            
+            {/* Task Name */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {isTodayTask && (
-                    <Badge className="bg-primary text-xs">{t('tasks.today')}</Badge>
-                  )}
-                  <span className={`font-semibold text-base ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
-                    {task.title}
-                  </span>
-                </div>
-              </div>
-              
-              {/* Meta Info Row */}
-              <div className="flex items-center gap-3 flex-wrap text-sm">
-                <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs`}>
-                  {t(priorityConfig?.labelKey || 'priority.medium')}
-                </Badge>
-                <Badge variant="secondary" className="text-xs">
-                  {t(`category.${task.category}`)}
-                </Badge>
-                {task.estimated_time && (
-                  <span className="flex items-center gap-1 text-muted-foreground text-xs">
-                    <Timer className="w-3 h-3" />
-                    {task.estimated_time}{t('common.minutes')}
-                  </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                {isTodayTask && (
+                  <Badge className="bg-primary text-xs">{t('tasks.today')}</Badge>
                 )}
+                <span className={`font-semibold text-base truncate ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                  {task.title}
+                </span>
               </div>
             </div>
-            
-            {/* Remaining Days Badge - Prominent Display */}
-            {!isCompleted && (task.deadline || task.plan_date) && (
-              <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                {renderDeadlineBadge(task)}
-              </div>
-            )}
-            
-            {/* Quick Actions */}
-            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+
+            {/* Actions */}
+            <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
               {!task.plan_date && !isCompleted && (
                 <Button
                   variant="ghost"
@@ -486,17 +433,6 @@ export default function TasksPage() {
                   title={t('tasks.removeFromPlan')}
                 >
                   <PinOff className="w-4 h-4 text-muted-foreground" />
-                </Button>
-              )}
-              {!isCompleted && task.status !== 'in_progress' && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleStatusChange(task.id, 'in_progress')}
-                  title={t('common.startTask')}
-                >
-                  <PlayCircle className="w-4 h-4 text-cyan-500" />
                 </Button>
               )}
               <Button
@@ -523,45 +459,64 @@ export default function TasksPage() {
             </div>
           </div>
 
-          {/* Deadline & Plan Info */}
-          {showPlanInfo && (deadlineInfo || task.plan_date) && (
-            <div className="flex items-center gap-4 mt-3 px-1">
-              {deadlineInfo && (
-                <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${deadlineInfo.color}`}>
-                  {deadlineInfo.icon}
-                  <span>{t('tasks.deadline')}: {deadlineInfo.text}</span>
-                </div>
-              )}
-              {task.plan_date && (
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">
-                  <CalendarDays className="w-3 h-3" />
-                  <span>{t('tasks.planDate')}: {format(new Date(task.plan_date), 'MM/dd')}</span>
-                </div>
-              )}
+          {/* Row 2: Badges */}
+          <div className="flex items-center gap-3 mt-3 ml-8 text-sm">
+            <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs`}>
+              {t(`category.${task.category}`)}
+            </Badge>
+            <Badge variant="secondary" className="text-xs">
+              {t(priorityConfig?.labelKey || 'priority.medium')}
+            </Badge>
+            {task.estimated_time && (
+              <span className="flex items-center gap-1 text-muted-foreground text-xs">
+                <Timer className="w-3 h-3" />
+                {task.estimated_time}{t('common.minutes')}
+              </span>
+            )}
+          </div>
+
+          {/* Row 3: Dates & Remaining Days */}
+          <div className="flex items-center gap-4 mt-3 ml-8 flex-wrap">
+            {task.plan_date && (
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <CalendarDays className="w-4 h-4" />
+                <span>{t('tasks.planDate')}: {format(new Date(task.plan_date), 'MM/dd')}</span>
+              </div>
+            )}
+            {deadlineInfo && (
+              <div className={`flex items-center gap-1.5 text-sm ${deadlineInfo.color.split(' ')[0]}`}>
+                <Clock className="w-4 h-4" />
+                <span>{t('tasks.deadline')}: {deadlineInfo.text}</span>
+              </div>
+            )}
+            {remainingDays !== null && !isCompleted && (
+              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-bold text-sm ${getUrgencyColor()}`}>
+                <span>{getUrgencyText()}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Row 4: Subtasks Progress */}
+          {hasSubtasks && (
+            <div className="mt-3 ml-8">
+              <div className="flex items-center justify-between text-sm mb-1.5">
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  <ListTodo className="w-4 h-4" />
+                  <span>{t('tasks.subtasks')}: {completedSubtasks}/{totalSubtasks}</span>
+                </span>
+                <span className="font-semibold">{subtaskProgress}%</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    subtaskProgress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-500 to-cyan-500'
+                  }`}
+                  style={{ width: `${subtaskProgress}%` }}
+                />
+              </div>
             </div>
           )}
         </CardContent>
-        
-        {/* Footer: Subtask Progress */}
-        {hasSubtasks && (
-          <div className="px-4 pb-4">
-            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-              <span className="flex items-center gap-1">
-                <ListTodo className="w-3 h-3" />
-                {completedSubtasks}/{totalSubtasks} {t('tasks.subtasks')}
-              </span>
-              <span className="font-medium">{subtaskProgress}%</span>
-            </div>
-            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-              <div 
-                className={`h-full rounded-full transition-all duration-300 ${
-                  subtaskProgress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-500 to-cyan-500'
-                }`}
-                style={{ width: `${subtaskProgress}%` }}
-              />
-            </div>
-          </div>
-        )}
       </Card>
     );
   };
