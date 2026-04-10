@@ -21,7 +21,9 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-RUN pnpm build
+# Run build commands directly
+RUN pnpm next build
+RUN pnpm tsup src/server.ts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify
 
 FROM node:20-slim
 
