@@ -13,8 +13,7 @@ services:
     restart: unless-stopped
     # Run as root to ensure write access to mounted volumes
     user: root
-    command: >
-      sh -c "chmod -R 777 /app/data && node dist/server.js"
+    command: node server.js
 
 volumes:
   studyflow_data:
