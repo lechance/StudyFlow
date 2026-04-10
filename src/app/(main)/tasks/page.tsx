@@ -402,7 +402,6 @@ export default function TasksPage() {
     const isCompleted = task.status === 'completed';
     const completedSubtasks = task.subtask_completed || 0;
     const totalSubtasks = task.subtask_total || 0;
-    const daysRemaining = getRemainingDays(task);
 
     // Navigate to task detail page
     const handleCardClick = () => {
@@ -412,57 +411,92 @@ export default function TasksPage() {
     return (
       <Card
         key={task.id}
-        className={`card-hover transition-all cursor-pointer overflow-hidden ${isCompleted ? 'opacity-60' : ''} ${
+        className={`card-hover transition-all cursor-pointer ${isCompleted ? 'opacity-60' : ''} ${
           deadlineInfo?.urgent ? `border ${deadlineInfo.borderColor}` : ''
         }`}
         onClick={handleCardClick}
       >
-        <CardContent className="p-0">
-          {/* Row 1: Task Name + Actions */}
-          <div className="flex items-center gap-3 p-4 border-b border-dashed">
+        <CardContent className="p-4">
+          {/* Header Row */}
+          <div className="flex items-start gap-3">
             <div onClick={(e) => e.stopPropagation()}>
               <Checkbox
                 checked={isCompleted}
                 onCheckedChange={(checked) => {
                   handleStatusChange(task.id, checked ? 'completed' : 'pending');
                 }}
-                className="w-5 h-5"
+                className="mt-1 w-5 h-5"
               />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                {isTodayTask && (
-                  <Badge className="bg-primary text-xs">{t('tasks.today')}</Badge>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {isTodayTask && (
+                    <Badge className="bg-primary text-xs">{t('tasks.today')}</Badge>
+                  )}
+                  <span className={`font-semibold text-base ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
+                    {task.title}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Meta Info Row */}
+              <div className="flex items-center gap-3 flex-wrap text-sm">
+                <Badge variant="outline" className={`${priorityConfig?.textColor} border-current text-xs`}>
+                  {t(priorityConfig?.labelKey || 'priority.medium')}
+                </Badge>
+                <Badge variant="secondary" className="text-xs">
+                  {t(`category.${task.category}`)}
+                </Badge>
+                {task.estimated_time && (
+                  <span className="flex items-center gap-1 text-muted-foreground text-xs">
+                    <Timer className="w-3 h-3" />
+                    {task.estimated_time}{t('common.minutes')}
+                  </span>
                 )}
-                <span className={`font-semibold text-lg truncate ${isCompleted ? 'line-through text-muted-foreground' : ''}`}>
-                  {task.title}
-                </span>
               </div>
             </div>
-            {/* Action Buttons */}
-            <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-              {task.plan_date && !isCompleted && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2 text-muted-foreground hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/40"
-                  onClick={(e) => handleRemoveFromPlan(task.id, e)}
-                  title={t('tasks.removeFromPlan')}
-                >
-                  <PinOff className="w-4 h-4 mr-1" />
-                  <span className="text-xs">{t('tasks.removeFromPlan')}</span>
-                </Button>
-              )}
+            
+            {/* Remaining Days Badge - Prominent Display */}
+            {!isCompleted && (task.deadline || task.plan_date) && (
+              <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                {renderDeadlineBadge(task)}
+              </div>
+            )}
+            
+            {/* Quick Actions */}
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
               {!task.plan_date && !isCompleted && (
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="h-8 px-2 text-primary hover:bg-primary/10"
+                  size="icon"
+                  className="h-8 w-8"
                   onClick={() => handleQuickAddToPlan(task.id, 'today')}
                   title={t('tasks.addToToday')}
                 >
-                  <Pin className="w-4 h-4 mr-1" />
-                  <span className="text-xs">{t('tasks.addToPlan')}</span>
+                  <Pin className="w-4 h-4 text-primary" />
+                </Button>
+              )}
+              {task.plan_date && !isCompleted && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/40"
+                  onClick={(e) => handleRemoveFromPlan(task.id, e)}
+                  title={t('tasks.removeFromPlan')}
+                >
+                  <PinOff className="w-4 h-4 text-muted-foreground" />
+                </Button>
+              )}
+              {!isCompleted && task.status !== 'in_progress' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => handleStatusChange(task.id, 'in_progress')}
+                  title={t('common.startTask')}
+                >
+                  <PlayCircle className="w-4 h-4 text-cyan-500" />
                 </Button>
               )}
               <Button
@@ -489,69 +523,45 @@ export default function TasksPage() {
             </div>
           </div>
 
-          {/* Row 2: Category */}
-          <div className="flex items-center gap-3 px-4 py-2 border-b border-dashed bg-muted/20">
-            <Badge variant="secondary" className="text-sm">
-              {t(`category.${task.category}`)}
-            </Badge>
-            <Badge variant="outline" className={`${priorityConfig?.textColor} border-current`}>
-              {t(priorityConfig?.labelKey || 'priority.medium')}
-            </Badge>
-          </div>
-
-          {/* Row 3: Plan Date + Deadline + Remaining Days */}
-          {(task.plan_date || task.deadline) && (
-            <div className="flex items-center justify-between px-4 py-2 border-b border-dashed">
-              <div className="flex items-center gap-4">
-                {task.plan_date && (
-                  <div className="flex items-center gap-1.5 text-sm">
-                    <CalendarDays className="w-4 h-4 text-blue-500" />
-                    <span className="text-muted-foreground">{t('tasks.planDate')}:</span>
-                    <span className="font-medium">{format(new Date(task.plan_date), 'MM/dd')}</span>
-                  </div>
-                )}
-                {task.deadline && (
-                  <div className="flex items-center gap-1.5 text-sm">
-                    <Clock className="w-4 h-4 text-orange-500" />
-                    <span className="text-muted-foreground">{t('tasks.deadline')}:</span>
-                    <span className="font-medium">{format(new Date(task.deadline), 'MM/dd')}</span>
-                  </div>
-                )}
-              </div>
-              {/* Remaining Days Badge */}
-              {!isCompleted && daysRemaining !== null && (
-                <div onClick={(e) => e.stopPropagation()}>
-                  {renderDeadlineBadge(task)}
+          {/* Deadline & Plan Info */}
+          {showPlanInfo && (deadlineInfo || task.plan_date) && (
+            <div className="flex items-center gap-4 mt-3 px-1">
+              {deadlineInfo && (
+                <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs ${deadlineInfo.color}`}>
+                  {deadlineInfo.icon}
+                  <span>{t('tasks.deadline')}: {deadlineInfo.text}</span>
+                </div>
+              )}
+              {task.plan_date && (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400">
+                  <CalendarDays className="w-3 h-3" />
+                  <span>{t('tasks.planDate')}: {format(new Date(task.plan_date), 'MM/dd')}</span>
                 </div>
               )}
             </div>
           )}
-
-          {/* Row 4: Subtask Progress */}
-          {hasSubtasks && (
-            <div className="px-4 py-3 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-              <div className="flex items-center justify-between mb-2">
-                <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <ListTodo className="w-4 h-4" />
-                  {t('tasks.subtasks')}: {completedSubtasks}/{totalSubtasks}
-                </span>
-                <span className={`text-sm font-bold ${subtaskProgress === 100 ? 'text-emerald-600' : 'text-blue-600'}`}>
-                  {subtaskProgress}%
-                </span>
-              </div>
-              <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-                <div 
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    subtaskProgress === 100 
-                      ? 'bg-gradient-to-r from-emerald-500 to-green-500' 
-                      : 'bg-gradient-to-r from-blue-500 to-cyan-500'
-                  }`}
-                  style={{ width: `${subtaskProgress}%` }}
-                />
-              </div>
-            </div>
-          )}
         </CardContent>
+        
+        {/* Footer: Subtask Progress */}
+        {hasSubtasks && (
+          <div className="px-4 pb-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+              <span className="flex items-center gap-1">
+                <ListTodo className="w-3 h-3" />
+                {completedSubtasks}/{totalSubtasks} {t('tasks.subtasks')}
+              </span>
+              <span className="font-medium">{subtaskProgress}%</span>
+            </div>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div 
+                className={`h-full rounded-full transition-all duration-300 ${
+                  subtaskProgress === 100 ? 'bg-emerald-500' : 'bg-gradient-to-r from-blue-500 to-cyan-500'
+                }`}
+                style={{ width: `${subtaskProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
       </Card>
     );
   };
