@@ -3,11 +3,9 @@ node_modules
 .pnpm-store
 .npm
 
-# Next.js build output
+# Production build output (these are copied explicitly in Dockerfile)
 .next
 out
-
-# Production build
 build
 dist
 
@@ -17,73 +15,30 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Local env files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.*.local
-
-# Vercel
-.vercel
-
-# TypeScript
-*.tsbuildinfo
-next-env.d.ts
+# Git
+.git
+.gitignore
 
 # IDE
 .idea
 .vscode
 *.swp
 *.swo
-*.suo
 
-# OS
-.DS_Store
-Thumbs.db
-
-# Git
-.git
-.gitignore
-.gitattributes
-
-# Logs
-logs
-*.log
-*.log.*
-
-# Test coverage
-coverage
-.nyc_output
-
-# Docker files (not needed in build context)
-Dockerfile*
-docker-compose*.yml
-.dockerignore
+# Environment files (secrets should be passed via env vars or docker secrets)
+.env
+.env.*
+!.env.example
 
 # Documentation
 *.md
 !README.md
 
-# Temporary files
-tmp
-temp
-*.tmp
-*.temp
-
-# Data directory (should be mounted as volume)
-data/
-*.db
-*.db-journal
-
-# Scripts
-scripts/
-deploy.sh
-coverage
-.nyc_output
-
-# Docker files (not needed in final image)
+# Docker files (not needed in image)
 Dockerfile
-docker-compose.yml
+docker-compose*.yml
 .dockerignore
+
+# Agent files
+AGENTS.md
+.coze
