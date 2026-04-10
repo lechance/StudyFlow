@@ -49,6 +49,14 @@ const zh: Record<string, string> = {
   'common.reset': '重置',
   'common.pause': '暂停',
   'common.resume': '继续',
+  'common.settings': '设置',
+  'common.saving': '保存中...',
+
+  // Profile
+  'profile.title': '个人信息',
+  'profile.description': '修改你的账号信息',
+  'profile.email': '邮箱',
+  'profile.emailPlaceholder': '输入邮箱（可选）',
 
   // Auth
   'auth.login': '登录',
@@ -147,6 +155,8 @@ const zh: Record<string, string> = {
   'tasks.noTasks': '暂无任务',
   'tasks.addFirst': '点击上方按钮添加你的第一个任务',
   'tasks.daysLeft': '{days} 天后截止',
+  'tasks.daysLeftShort': '天剩余',
+  'tasks.daysOverdue': '天逾期',
   'tasks.today': '今天',
   'tasks.tomorrow': '明天',
   'tasks.overdue': '已逾期 {days} 天',
@@ -415,6 +425,8 @@ const en: Record<string, string> = {
   'tasks.noTasks': 'No tasks yet',
   'tasks.addFirst': 'Click the button above to add your first task',
   'tasks.daysLeft': '{days} days left',
+  'tasks.daysLeftShort': 'days left',
+  'tasks.daysOverdue': 'days overdue',
   'tasks.today': 'Today',
   'tasks.tomorrow': 'Tomorrow',
   'tasks.overdue': '{days} days overdue',
@@ -489,6 +501,14 @@ const en: Record<string, string> = {
   'common.pause': 'Pause',
   'common.resume': 'Resume',
   'common.greatJob': 'Great job!',
+  'common.settings': 'Settings',
+  'common.saving': 'Saving...',
+
+  // Profile English
+  'profile.title': 'Profile',
+  'profile.description': 'Update your account information',
+  'profile.email': 'Email',
+  'profile.emailPlaceholder': 'Enter email (optional)',
 
   // Status English
   'status.pending': 'Pending',

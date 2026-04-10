@@ -4,9 +4,8 @@ import { getCurrentUser } from '@/lib/auth';
 import type { ApiResponse, User } from '@/lib/types';
 
 // 更新当前用户信息
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+export async function POST(
+  request: NextRequest
 ) {
   try {
     const currentUser = await getCurrentUser();
@@ -17,16 +16,6 @@ export async function PUT(
       }, { status: 401 });
     }
 
-    const { id } = await params;
-    
-    // 只能修改自己的信息
-    if (currentUser.id !== id && currentUser.role !== 'admin') {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: '权限不足'
-      }, { status: 403 });
-    }
-
     const body = await request.json();
     const db = getDb();
 
@@ -34,7 +23,7 @@ export async function PUT(
     if (body.username) {
       const existingUser = db.prepare(
         'SELECT id FROM users WHERE username = ? AND id != ?'
-      ).get(body.username, id);
+      ).get(body.username, currentUser.id);
       
       if (existingUser) {
         return NextResponse.json<ApiResponse>({
@@ -58,7 +47,7 @@ export async function PUT(
 
     if (updates.length > 0) {
       updates.push('updated_at = datetime(\'now\')');
-      values.push(id);
+      values.push(currentUser.id);
       
       db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...values);
     }
@@ -66,14 +55,14 @@ export async function PUT(
     // 获取更新后的用户信息
     const updatedUser = db.prepare(
       'SELECT id, username, email, role, streak_days, total_study_time, created_at FROM users WHERE id = ?'
-    ).get(id) as User;
+    ).get(currentUser.id) as User;
 
     return NextResponse.json<ApiResponse>({
       success: true,
       data: updatedUser
     });
   } catch (error) {
-    console.error('Update user error:', error);
+    console.error('Update user profile error:', error);
     return NextResponse.json<ApiResponse>({
       success: false,
       error: '更新用户信息失败'

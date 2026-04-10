@@ -208,14 +208,31 @@ export default function TasksPage() {
   };
 
   // Remove from plan
-  const handleRemoveFromPlan = async (taskId: string) => {
+  const handleRemoveFromPlan = async (taskId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    event.preventDefault();
+    
     try {
-      const res = await tasksApi.update(taskId, { plan_date: null });
+      // Use a custom fetch to ensure plan_date is properly set to null
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ plan_date: null }),
+      });
+      
+      const res = await response.json();
+      
       if (res.success) {
         toast.success(t('tasks.removedFromPlan'));
         await fetchTasks();
+      } else {
+        toast.error(res.error || t('common.error'));
       }
-    } catch {
+    } catch (error) {
+      console.error('Remove from plan error:', error);
       toast.error(t('common.error'));
     }
   };
@@ -260,6 +277,64 @@ export default function TasksPage() {
     setShowClearDialog(false);
     toast.success(t('tasks.cleared'));
     await fetchTasks();
+  };
+
+  // Get remaining days until deadline
+  const getRemainingDays = (task: any): number | null => {
+    const deadline = task.deadline || task.plan_date;
+    if (!deadline) return null;
+    
+    const deadlineDate = new Date(deadline);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    deadlineDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = deadlineDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  // Render deadline badge with remaining days
+  const renderDeadlineBadge = (task: any) => {
+    const days = getRemainingDays(task);
+    if (days === null) return null;
+    
+    if (days < 0) {
+      // Overdue
+      return (
+        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400">
+          <AlertCircle className="w-4 h-4" />
+          <span className="font-bold text-lg">{Math.abs(days)}</span>
+          <span className="text-xs">{t('tasks.daysOverdue')}</span>
+        </div>
+      );
+    }
+    if (days === 0) {
+      // Today
+      return (
+        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400">
+          <Clock className="w-4 h-4" />
+          <span className="font-bold text-lg">{t('tasks.today')}</span>
+        </div>
+      );
+    }
+    if (days === 1) {
+      // Tomorrow
+      return (
+        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400">
+          <Calendar className="w-4 h-4" />
+          <span className="font-bold text-lg">{t('tasks.tomorrow')}</span>
+        </div>
+      );
+    }
+    // More days
+    return (
+      <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400">
+        <Timer className="w-4 h-4" />
+        <span className="font-bold text-lg">{days}</span>
+        <span className="text-xs">{t('tasks.daysLeftShort')}</span>
+      </div>
+    );
   };
 
   // Get deadline info
@@ -382,6 +457,13 @@ export default function TasksPage() {
               </div>
             </div>
             
+            {/* Remaining Days Badge - Prominent Display */}
+            {!isCompleted && (task.deadline || task.plan_date) && (
+              <div className="flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                {renderDeadlineBadge(task)}
+              </div>
+            )}
+            
             {/* Quick Actions */}
             <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
               {!task.plan_date && !isCompleted && (
@@ -399,8 +481,8 @@ export default function TasksPage() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleRemoveFromPlan(task.id)}
+                  className="h-8 w-8 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/40"
+                  onClick={(e) => handleRemoveFromPlan(task.id, e)}
                   title={t('tasks.removeFromPlan')}
                 >
                   <PinOff className="w-4 h-4 text-muted-foreground" />
