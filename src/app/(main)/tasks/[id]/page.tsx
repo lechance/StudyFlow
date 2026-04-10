@@ -258,14 +258,14 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
       const res = await api.put('/subtasks', { 
         id: subtaskId, 
         title: editingSubtaskTitle.trim(),
-        description: editingSubtaskDescription.trim() || undefined
+        description: editingSubtaskDescription.trim()
       });
       if (res.success) {
         setSubtasks(prev => prev.map(s => 
           s.id === subtaskId ? { 
             ...s, 
             title: editingSubtaskTitle.trim(),
-            description: editingSubtaskDescription.trim() || undefined
+            description: editingSubtaskDescription.trim()
           } : s
         ));
         setEditingSubtaskId(null);
