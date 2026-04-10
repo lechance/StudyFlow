@@ -127,13 +127,21 @@ function initializeTables(database: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_subtasks_task_id ON subtasks(task_id);
   `);
   
-  // Migration: Add description column if it doesn't exist
+  // Migration: Add description column if it doesn't exist (tasks table)
   try {
     database.exec("ALTER TABLE tasks ADD COLUMN description TEXT");
   } catch (e: any) {
-    // Column already exists, ignore error
     if (!e.message.includes('duplicate column name')) {
-      console.log('Migration note:', e.message);
+      // Column already exists or other error, ignore
+    }
+  }
+  
+  // Migration: Add description column if it doesn't exist (subtasks table)
+  try {
+    database.exec("ALTER TABLE subtasks ADD COLUMN description TEXT");
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column name')) {
+      // Column already exists or other error, ignore
     }
   }
   

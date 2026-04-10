@@ -745,7 +745,10 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                             value={editingSubtaskTitle}
                             onChange={(e) => setEditingSubtaskTitle(e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') saveSubtaskEdit(subtask.id);
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                saveSubtaskEdit(subtask.id);
+                              }
                               if (e.key === 'Escape') cancelSubtaskEdit();
                             }}
                             className="h-8"
@@ -756,11 +759,10 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
                             value={editingSubtaskDescription}
                             onChange={(e) => setEditingSubtaskDescription(e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') saveSubtaskEdit(subtask.id);
                               if (e.key === 'Escape') cancelSubtaskEdit();
                             }}
                             className="h-7 text-sm"
-                            placeholder={t('tasks.description')}
+                            placeholder={t('tasks.subtaskDescriptionPlaceholder') || '描述 (可选)'}
                           />
                         </div>
                       ) : (
