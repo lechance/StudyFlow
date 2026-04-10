@@ -35,10 +35,17 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     
+    if (!loginUsername.trim() || !loginPassword.trim()) {
+      setError(t('auth.usernameRequired'));
+      setLoading(false);
+      return;
+    }
+    
     try {
       const result = await login(loginUsername, loginPassword);
       
       if (result.success) {
+        // 登录成功，跳转到仪表盘
         window.location.href = '/dashboard';
       } else {
         setError(result.error || t('auth.invalidCredentials'));

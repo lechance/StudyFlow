@@ -34,18 +34,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-RUN groupadd --system --gid 1001 nodejs && \
-    useradd --system --uid 1001 --gid nodejs nextjs
-
-RUN mkdir -p /app/data /app/public && \
-    chown -R nextjs:nodejs /app && \
-    chmod 777 /app/data
-
-# Create a default database with proper permissions
-RUN sqlite3 /app/data/study.db "SELECT 1;" 2>/dev/null || \
-    (touch /app/data/study.db && \
-     chown nextjs:nodejs /app/data/study.db && \
-     chmod 666 /app/data/study.db)
+# Create data directory with full permissions
+RUN mkdir -p /app/data /app/public && chmod 777 /app/data
 
 COPY --from=0 /app/.next/standalone ./
 COPY --from=0 /app/.next/static ./.next/static
@@ -53,10 +43,17 @@ COPY --from=0 /app/public ./public
 COPY --from=0 /app/package.json ./
 COPY --from=0 /app/node_modules ./node_modules
 
-USER nextjs
+# Create a writable database file if it doesn't exist
+RUN if [ ! -f /app/data/study.db ]; then \
+        touch /app/data/study.db && \
+        chmod 666 /app/data/study.db; \
+    fi
 
-# Ensure database directory and file are writable
-RUN chmod 777 /app/data && chmod 666 /app/data/study.db
+# Ensure data directory and database are always writable
+RUN chmod -R 777 /app/data
+
+# Run as root to allow writing to mounted volumes
+# Do not use USER directive to avoid permission issues with volumes
 
 EXPOSE 5000
 

@@ -19,10 +19,10 @@ async function fetchApi<T>(
     const data = await response.json();
     return data;
   } catch (error) {
-    console.error('API Error:', error);
+    console.error('[API] Request failed:', endpoint, error);
     return {
       success: false,
-      error: '网络请求失败',
+      error: '网络请求失败，请检查网络连接',
     };
   }
 }
