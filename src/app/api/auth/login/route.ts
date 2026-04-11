@@ -57,12 +57,11 @@ export async function POST(request: NextRequest) {
     });
 
     // 设置 session cookie
-    // 仅在正式生产环境使用 Secure cookie，确保兼容 HTTP 开发环境
-    const isProdEnv = process.env.COZE_PROJECT_ENV === 'PROD';
-    
+    // 始终设置 secure: false，确保在 HTTP 和 HTTPS 下都能正常工作
+    // 在生产环境使用反向代理处理 HTTPS，Cookie 设置由代理负责
     response.cookies.set(SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
-      secure: isProdEnv,
+      secure: false,
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/'

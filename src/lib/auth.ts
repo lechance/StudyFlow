@@ -20,11 +20,11 @@ export async function createSession(userId: string): Promise<string> {
 
 // 设置 session cookie 到 response
 export function setSessionCookieToResponse(response: NextResponse, sessionId: string) {
-  // 在正式生产环境 (COZE_PROJECT_ENV=PROD) 中启用 Secure
-  const isProdEnv = process.env.COZE_PROJECT_ENV === 'PROD';
+  // 始终设置 secure: false，确保在 HTTP 和 HTTPS 下都能正常工作
+  // 在生产环境使用反向代理处理 HTTPS，Cookie 设置由代理负责
   response.cookies.set(SESSION_COOKIE_NAME, sessionId, {
     httpOnly: true,
-    secure: isProdEnv,
+    secure: false,
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/'
@@ -36,7 +36,7 @@ export async function setSessionCookie(sessionId: string): Promise<{ cookieHeade
   const cookieStore = await cookies();
   const cookieOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: false,  // 始终为 false，确保 HTTP/HTTPS 都能工作
     sameSite: 'lax' as const,
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/'
@@ -45,7 +45,7 @@ export async function setSessionCookie(sessionId: string): Promise<{ cookieHeade
   cookieStore.set(SESSION_COOKIE_NAME, sessionId, cookieOptions);
   
   // 返回 cookie 字符串，手动设置到响应头
-  const serialized = `${SESSION_COOKIE_NAME}=${sessionId}; Path=/; Max-Age=${cookieOptions.maxAge}; HttpOnly${cookieOptions.secure ? '; Secure' : ''}; SameSite=${cookieOptions.sameSite}`;
+  const serialized = `${SESSION_COOKIE_NAME}=${sessionId}; Path=/; Max-Age=${cookieOptions.maxAge}; HttpOnly; SameSite=${cookieOptions.sameSite}`;
   return { cookieHeader: serialized };
 }
 
