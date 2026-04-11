@@ -11,15 +11,22 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
   BookOpen,
-  Calendar,
   Home,
   LogOut,
   Menu,
   Timer,
   Trash2,
   BarChart3,
-  Globe
+  Globe,
+  User,
+  Palette,
+  ChevronUp,
 } from 'lucide-react';
 
 function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
@@ -76,31 +83,68 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
         })}
       </nav>
 
-      {/* User Info */}
+      {/* User Info with Popup Menu */}
       <div className="p-3 border-t">
-        <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
-          <Avatar className="w-9 h-9">
-            <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-cyan-500 text-white">
-              {user?.username?.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          {!collapsed && (
-            <div className="flex-1 min-w-0">
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              className={`w-full flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors ${
+                collapsed ? 'justify-center' : ''
+              }`}
+            >
+              <Avatar className="w-9 h-9">
+                <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-cyan-500 text-white">
+                  {user?.username?.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              {!collapsed && (
+                <>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-medium truncate">{user?.username}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('dashboard.streakDays')}: {user?.streak_days}
+                    </p>
+                  </div>
+                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                </>
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-56 p-1 mb-2"
+            side="top"
+            align="start"
+            sideOffset={0}
+          >
+            <div className="px-3 py-2 border-b mb-1">
               <p className="text-sm font-medium truncate">{user?.username}</p>
-              <p className="text-xs text-muted-foreground">
-                {t('dashboard.streakDays')}: {user?.streak_days}
-              </p>
+              <p className="text-xs text-muted-foreground">{t('user.account')}</p>
             </div>
-          )}
-        </div>
-        <Button
-          variant="ghost"
-          className={`w-full mt-2 text-muted-foreground hover:text-destructive ${collapsed ? 'px-2' : ''}`}
-          onClick={logout}
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          {!collapsed && t('auth.logout')}
-        </Button>
+            <div className="space-y-0.5">
+              <button
+                onClick={() => {/* TODO: Navigate to profile */}}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
+              >
+                <User className="w-4 h-4" />
+                {t('user.profile')}
+              </button>
+              <button
+                onClick={() => {/* TODO: Open theme settings */}}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
+              >
+                <Palette className="w-4 h-4" />
+                {t('user.theme')}
+              </button>
+              <button
+                onClick={logout}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-destructive transition-colors text-destructive"
+              >
+                <LogOut className="w-4 h-4" />
+                {t('user.logout')}
+              </button>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
     </aside>
   );
@@ -159,27 +203,58 @@ function MobileNav() {
         </nav>
 
         <div className="p-3 border-t">
-          <div className="flex items-center gap-3 mb-3">
-            <Avatar className="w-9 h-9">
-              <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-cyan-500 text-white">
-                {user?.username?.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user?.username}</p>
-              <p className="text-xs text-muted-foreground">
-                {t('dashboard.streakDays')}: {user?.streak_days}
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            className="w-full text-muted-foreground hover:text-destructive"
-            onClick={logout}
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            {t('auth.logout')}
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors">
+                <Avatar className="w-9 h-9">
+                  <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-cyan-500 text-white">
+                    {user?.username?.charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-sm font-medium truncate">{user?.username}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {t('dashboard.streakDays')}: {user?.streak_days}
+                  </p>
+                </div>
+                <ChevronUp className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              className="w-64 p-1 mb-2"
+              side="top"
+              align="start"
+              sideOffset={0}
+            >
+              <div className="px-3 py-2 border-b mb-1">
+                <p className="text-sm font-medium truncate">{user?.username}</p>
+                <p className="text-xs text-muted-foreground">{t('user.account')}</p>
+              </div>
+              <div className="space-y-0.5">
+                <button
+                  onClick={() => {/* TODO: Navigate to profile */}}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
+                >
+                  <User className="w-4 h-4" />
+                  {t('user.profile')}
+                </button>
+                <button
+                  onClick={() => {/* TODO: Open theme settings */}}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
+                >
+                  <Palette className="w-4 h-4" />
+                  {t('user.theme')}
+                </button>
+                <button
+                  onClick={logout}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent hover:text-destructive transition-colors text-destructive"
+                >
+                  <LogOut className="w-4 h-4" />
+                  {t('user.logout')}
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </SheetContent>
     </Sheet>

@@ -325,6 +325,13 @@ const zh: Record<string, string> = {
   
   // Recycle page
   'recycle.confirmClearAll': '清空后所有任务将无法恢复，确定要清空吗？',
+
+  // User Settings Menu
+  'user.profile': '个人中心',
+  'user.theme': '主题设置',
+  'user.logout': '退出登录',
+  'user.account': '账号',
+  'user.settings': '设置',
 };
 
 // English translations
@@ -648,6 +655,13 @@ const en: Record<string, string> = {
   'plans.templates.preview': 'Preview\n1. Preview next lesson\n2. Organize notes\n3. Practice exercises',
   'plans.templates.morning': 'Morning Routine\n1. Morning reading 30 min\n2. Online course\n3. Review weekly key points',
   'common.planningTip': 'Choose a template to get started quickly',
+
+  // User Settings Menu
+  'user.profile': 'Profile',
+  'user.theme': 'Theme Settings',
+  'user.logout': 'Logout',
+  'user.account': 'Account',
+  'user.settings': 'Settings',
 };
 
 const translations = { 'zh-CN': zh, 'en': en };
