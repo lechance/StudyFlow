@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, generateId } from '@/lib/db';
-import { hashPassword, createSession, setSessionCookie, initSessionsTable } from '@/lib/auth';
+import { hashPassword, createSession } from '@/lib/auth';
 import type { ApiResponse } from '@/lib/types';
 
-// 初始化 sessions 表
-initSessionsTable();
+const SESSION_COOKIE_NAME = 'study_session';
 
 // 注册
 export async function POST(request: NextRequest) {
@@ -47,9 +46,9 @@ export async function POST(request: NextRequest) {
 
     // 创建会话
     const sessionId = await createSession(userId);
-    await setSessionCookie(sessionId);
 
-    return NextResponse.json<ApiResponse>({
+    // 创建响应并设置 cookie
+    const response = NextResponse.json<ApiResponse>({
       success: true,
       data: {
         id: userId,
@@ -59,6 +58,20 @@ export async function POST(request: NextRequest) {
       },
       message: '注册成功'
     });
+
+    // 设置 session cookie
+    const isProduction = process.env.NODE_ENV === 'production' && 
+                         process.env.COZE_PROJECT_ENV === 'PROD';
+    
+    response.cookies.set(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/'
+    });
+
+    return response;
   } catch (error) {
     console.error('Register error:', error);
     return NextResponse.json<ApiResponse>({

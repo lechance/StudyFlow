@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { verifyPassword, createSession, setSessionCookieToResponse, initSessionsTable } from '@/lib/auth';
+import { verifyPassword, createSession } from '@/lib/auth';
 import type { ApiResponse } from '@/lib/types';
+import { cookies } from 'next/headers';
 
-// 初始化 sessions 表
-try {
-  initSessionsTable();
-} catch (error) {
-  console.error('Failed to initialize sessions table:', error);
-}
+const SESSION_COOKIE_NAME = 'study_session';
 
 // 登录
 export async function POST(request: NextRequest) {
@@ -23,42 +19,30 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('Login attempt for username:', username);
-
     const db = getDb();
-    console.log('Database connection established');
 
     // 查找用户
     const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as any;
     if (!user) {
-      console.log('User not found:', username);
       return NextResponse.json<ApiResponse>({
         success: false,
         error: '用户名或密码错误'
       }, { status: 401 });
     }
     
-    console.log('User found:', user.id, user.username);
-
     // 验证密码
     const isPasswordValid = verifyPassword(password, user.password);
-    console.log('Password verification result:', isPasswordValid);
-    
     if (!isPasswordValid) {
-      console.log('Password verification failed for user:', username);
       return NextResponse.json<ApiResponse>({
         success: false,
         error: '用户名或密码错误'
       }, { status: 401 });
     }
 
-    console.log('Creating session for user:', user.id);
-    
     // 创建会话
     const sessionId = await createSession(user.id);
-    console.log('Session created:', sessionId);
 
-    // 使用 NextResponse 设置 cookie
+    // 创建响应并设置 cookie
     const response = NextResponse.json<ApiResponse>({
       success: true,
       data: {
@@ -71,9 +55,18 @@ export async function POST(request: NextRequest) {
       },
       message: '登录成功'
     });
+
+    // 设置 session cookie
+    const isProduction = process.env.NODE_ENV === 'production' && 
+                         process.env.COZE_PROJECT_ENV === 'PROD';
     
-    setSessionCookieToResponse(response, sessionId);
-    console.log('Session cookie set');
+    response.cookies.set(SESSION_COOKIE_NAME, sessionId, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/'
+    });
 
     return response;
   } catch (error) {
