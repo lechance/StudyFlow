@@ -1,18 +1,19 @@
 # StudyFlow - Dockerfile
-# Multi-stage build for optimized image size
+# Multi-stage build using Alpine Linux for minimal image size
 
 # ============================================
 # Stage 1: Build
 # ============================================
-FROM node:20-slim AS builder
+FROM node:20-alpine AS builder
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install build dependencies for native modules (better-sqlite3, etc.)
+RUN apk add --no-cache \
     python3 \
     make \
     g++ \
-    sqlite3 \
-    libsqlite3-dev \
-    && rm -rf /var/lib/apt/lists/*
+    musl-dev \
+    sqlite-dev \
+    && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
@@ -41,12 +42,12 @@ RUN pnpm tsup src/server.ts --format cjs --platform node --target node20 --outDi
 # ============================================
 # Stage 2: Runtime
 # ============================================
-FROM node:20-slim
+FROM node:20-alpine
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    sqlite3 \
-    && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+# Install runtime dependencies
+RUN apk add --no-cache \
+    sqlite \
+    && rm -rf /var/cache/apk/*
 
 WORKDIR /app
 
@@ -80,6 +81,10 @@ RUN if [ ! -f /app/data/study.db ]; then \
 
 # Always ensure data directory is writable
 RUN chmod -R 777 /app/data
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:5000 || exit 1
 
 # Default command - uses Next.js production server
 CMD ["pnpm", "next", "start", "-p", "5000", "-H", "0.0.0.0"]

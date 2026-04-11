@@ -1,0 +1,27 @@
+# StudyFlow - Development Docker Configuration
+
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: studyflow/dev:latest
+    container_name: studyflow-dev
+    ports:
+      - "5000:5000"
+      - "9229:9229  # Node.js debugger"
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - NEXT_TELEMETRY_DISABLED=1
+    volumes:
+      - .:/app
+      - studyflow_dev_data:/app/data
+    restart: "no"
+    command: pnpm dev
+
+volumes:
+  studyflow_dev_data:
+    driver: local

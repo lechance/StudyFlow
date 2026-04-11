@@ -1,11 +1,13 @@
-# Dependencies
+# Dependencies - node_modules is copied explicitly in Dockerfile
 node_modules
 .pnpm-store
 .npm
 
-# Production build output (these are copied explicitly in Dockerfile)
+# Next.js build output - copied explicitly from build stage
 .next
 out
+
+# Build artifacts
 build
 dist
 
@@ -25,7 +27,7 @@ pnpm-debug.log*
 *.swp
 *.swo
 
-# Environment files (secrets should be passed via env vars or docker secrets)
+# Environment files (secrets should be passed via env vars)
 .env
 .env.*
 !.env.example
@@ -42,3 +44,13 @@ docker-compose*.yml
 # Agent files
 AGENTS.md
 .coze
+
+# TypeScript build info
+tsconfig.tsbuildinfo
+*.tsbuildinfo
+
+# Test files
+__tests__
+*.test.*
+*.spec.*
+coverage
