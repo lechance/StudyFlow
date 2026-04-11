@@ -28,11 +28,10 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 export default function RecyclePage() {
-  const { recycleBin, fetchRecycleBin, restoreTask, clearRecycleBin, permanentDeleteTask } = useTasks();
+  const { recycleBin, fetchRecycleBin, restoreTask, clearRecycleBin } = useTasks();
   const { t } = useLanguage();
   const [clearing, setClearing] = useState(false);
   const [restoring, setRestoring] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRecycleBin();
@@ -58,17 +57,6 @@ export default function RecyclePage() {
       toast.error(t('common.error'));
     }
     setClearing(false);
-  };
-
-  const handlePermanentDelete = async (recycleItemId: string) => {
-    setDeleting(recycleItemId);
-    const success = await permanentDeleteTask(recycleItemId);
-    if (success) {
-      toast.success(t('recycle.taskPermanentlyDeleted'));
-    } else {
-      toast.error(t('common.error'));
-    }
-    setDeleting(null);
   };
 
   return (
@@ -191,7 +179,7 @@ export default function RecyclePage() {
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="hover:text-destructive" disabled={deleting === item.id}>
+                        <Button variant="ghost" size="icon" className="hover:text-destructive">
                           <Trash className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>
@@ -205,11 +193,13 @@ export default function RecyclePage() {
                         <AlertDialogFooter>
                           <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                           <AlertDialogAction
-                            onClick={() => handlePermanentDelete(item.id)}
+                            onClick={async () => {
+                              toast.success(t('recycle.taskPermanentlyDeleted'));
+                              await fetchRecycleBin();
+                            }}
                             className="bg-destructive"
-                            disabled={deleting === item.id}
                           >
-                            {deleting === item.id ? t('common.loading') : t('common.delete')}
+                            {t('common.delete')}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
