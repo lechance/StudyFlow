@@ -260,7 +260,7 @@ export default function UsersPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>{t('user.confirmDelete')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('user.deleteWarning', { username: deleteTarget?.username })}
+              {t('user.deleteWarning', { username: deleteTarget?.username ?? '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
