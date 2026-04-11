@@ -7,39 +7,59 @@ const isProdEnv = process.env.COZE_PROJECT_ENV === 'PROD';
 const dbBaseDir = isProdEnv ? '/app/work/studyflow-data' : path.join(process.cwd(), 'data');
 const dbPath = path.join(dbBaseDir, 'study.db');
 
-let db: Database.Database;
+// 存储在 global 上的键名
+const DB_GLOBAL_KEY = '__studyflow_db__';
+
+// 获取全局数据库实例
+function getGlobalDb(): Database.Database | undefined {
+  return (global as any)[DB_GLOBAL_KEY];
+}
+
+// 设置全局数据库实例
+function setGlobalDb(dbInstance: Database.Database) {
+  (global as any)[DB_GLOBAL_KEY] = dbInstance;
+}
+
+let db: Database.Database | undefined = getGlobalDb();
+
+if (!db) {
+  const fs = require('fs');
+  
+  // Ensure database directory exists
+  if (!fs.existsSync(dbBaseDir)) {
+    fs.mkdirSync(dbBaseDir, { recursive: true });
+    console.log('Created database directory:', dbBaseDir);
+  }
+  
+  // Ensure database file exists
+  if (!fs.existsSync(dbPath)) {
+    fs.writeFileSync(dbPath, '');
+    console.log('Created database file:', dbPath);
+  }
+  
+  db = new Database(dbPath);
+  // Use DELETE journal mode instead of WAL to avoid concurrency issues
+  db.pragma('journal_mode = DELETE');
+  db.pragma('synchronous = NORMAL');
+  
+  // Check if we can write to the database
+  try {
+    db.exec('SELECT 1');
+  } catch (error) {
+    console.error('Database read test failed:', error);
+  }
+  
+  // 保存到 global
+  setGlobalDb(db);
+  
+  initializeTables(db);
+}
 
 export function getDb(): Database.Database {
   if (!db) {
-    const fs = require('fs');
-    
-    // Ensure database directory exists
-    if (!fs.existsSync(dbBaseDir)) {
-      fs.mkdirSync(dbBaseDir, { recursive: true });
-      console.log('Created database directory:', dbBaseDir);
-    }
-    
-    // Ensure database file exists
-    if (!fs.existsSync(dbPath)) {
-      fs.writeFileSync(dbPath, '');
-      console.log('Created database file:', dbPath);
-    }
-    
-    db = new Database(dbPath);
-    // Use DELETE journal mode instead of WAL to avoid concurrency issues
-    db.pragma('journal_mode = DELETE');
-    db.pragma('synchronous = NORMAL');
-    
-    // Check if we can write to the database
-    try {
-      db.exec('SELECT 1');
-    } catch (error) {
-      console.error('Database read test failed:', error);
-    }
-    
-    initializeTables(db);
+    db = getGlobalDb();
   }
-  return db;
+  return db!;
 }
 
 function initializeTables(database: Database.Database) {
