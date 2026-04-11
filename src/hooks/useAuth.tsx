@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { authApi } from '@/lib/api';
 
 interface User {
@@ -27,47 +27,66 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [initialized, setInitialized] = useState(false);
+  const initRef = useRef(false);
+  const pendingLoginRef = useRef(false);
 
   const refreshUser = useCallback(async () => {
-    const res = await authApi.getCurrentUser();
-    if (res.success) {
-      setUser(res.data);
-    } else {
+    try {
+      const res = await authApi.getCurrentUser();
+      if (res.success) {
+        setUser(res.data);
+      } else {
+        setUser(null);
+      }
+    } catch {
       setUser(null);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
   // 只在首次加载时获取用户信息
   useEffect(() => {
-    if (!initialized) {
-      setInitialized(true);
-      refreshUser().finally(() => {
-        setLoading(false);
-      });
+    if (!initRef.current && !pendingLoginRef.current) {
+      initRef.current = true;
+      refreshUser();
+    } else {
+      setLoading(false);
     }
-  }, [initialized, refreshUser]);
+  }, [refreshUser]);
 
   const login = async (username: string, password: string) => {
+    pendingLoginRef.current = true;
     try {
       const res = await authApi.login(username, password);
       if (res.success) {
         setUser(res.data);
+        setLoading(false);
         return { success: true };
       }
       return { success: false, error: res.error };
     } catch {
       return { success: false, error: 'Network error' };
+    } finally {
+      pendingLoginRef.current = false;
     }
   };
 
   const register = async (username: string, password: string, email?: string) => {
-    const res = await authApi.register(username, password, email);
-    if (res.success) {
-      setUser(res.data);
-      return { success: true };
+    pendingLoginRef.current = true;
+    try {
+      const res = await authApi.register(username, password, email);
+      if (res.success) {
+        setUser(res.data);
+        setLoading(false);
+        return { success: true };
+      }
+      return { success: false, error: res.error };
+    } catch {
+      return { success: false, error: 'Network error' };
+    } finally {
+      pendingLoginRef.current = false;
     }
-    return { success: false, error: res.error };
   };
 
   const logout = async () => {

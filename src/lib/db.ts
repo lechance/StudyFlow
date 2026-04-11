@@ -1,9 +1,10 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 
-const isProduction = process.env.NODE_ENV === 'production';
-// 生产环境使用 /tmp 可写目录
-const dbBaseDir = isProduction ? '/tmp/studyflow-data' : path.join(process.cwd(), 'data');
+// 使用 COZE_PROJECT_ENV 判断生产环境
+const isProdEnv = process.env.COZE_PROJECT_ENV === 'PROD';
+// 生产环境使用 /app/work 持久化目录，开发环境使用项目 data 目录
+const dbBaseDir = isProdEnv ? '/app/work/studyflow-data' : path.join(process.cwd(), 'data');
 const dbPath = path.join(dbBaseDir, 'study.db');
 
 let db: Database.Database;

@@ -20,12 +20,11 @@ export async function createSession(userId: string): Promise<string> {
 
 // 设置 session cookie 到 response
 export function setSessionCookieToResponse(response: NextResponse, sessionId: string) {
-  // 在开发环境中禁用 secure，确保 cookie 能正常工作
-  const isProduction = process.env.NODE_ENV === 'production' && 
-                       process.env.COZE_PROJECT_ENV === 'PROD';
+  // 在正式生产环境 (COZE_PROJECT_ENV=PROD) 中启用 Secure
+  const isProdEnv = process.env.COZE_PROJECT_ENV === 'PROD';
   response.cookies.set(SESSION_COOKIE_NAME, sessionId, {
     httpOnly: true,
-    secure: isProduction,
+    secure: isProdEnv,
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/'
