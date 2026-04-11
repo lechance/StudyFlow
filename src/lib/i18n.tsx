@@ -332,6 +332,30 @@ const zh: Record<string, string> = {
   'user.logout': '退出登录',
   'user.account': '账号',
   'user.settings': '设置',
+
+  // User Management
+  'user.title': '用户管理',
+  'user.subtitle': '管理系统用户和权限',
+  'user.totalUsers': '总用户数',
+  'user.admins': '管理员',
+  'user.regularUsers': '普通用户',
+  'user.userList': '用户列表',
+  'user.username': '用户名',
+  'user.email': '邮箱',
+  'user.role': '角色',
+  'user.streakDays': '连续天数',
+  'user.studyTime': '学习时长',
+  'user.createdAt': '创建时间',
+  'user.admin': '管理员',
+  'user.user': '普通用户',
+  'user.you': '你',
+  'user.days': '天',
+  'user.confirmDelete': '确认删除用户',
+  'user.deleteWarning': '确定要删除用户「{username}」吗？此操作不可恢复，将删除该用户的所有数据。',
+  'user.noPermission': '无访问权限',
+  'user.adminRequired': '只有管理员可以访问此页面',
+  'common.refresh': '刷新',
+  'common.actions': '操作',
 };
 
 // English translations
@@ -662,6 +686,30 @@ const en: Record<string, string> = {
   'user.logout': 'Logout',
   'user.account': 'Account',
   'user.settings': 'Settings',
+
+  // User Management
+  'user.title': 'User Management',
+  'user.subtitle': 'Manage system users and permissions',
+  'user.totalUsers': 'Total Users',
+  'user.admins': 'Admins',
+  'user.regularUsers': 'Regular Users',
+  'user.userList': 'User List',
+  'user.username': 'Username',
+  'user.email': 'Email',
+  'user.role': 'Role',
+  'user.streakDays': 'Streak Days',
+  'user.studyTime': 'Study Time',
+  'user.createdAt': 'Created At',
+  'user.admin': 'Admin',
+  'user.user': 'User',
+  'user.you': 'You',
+  'user.days': 'days',
+  'user.confirmDelete': 'Confirm Delete User',
+  'user.deleteWarning': 'Are you sure you want to delete user "{username}"? This action cannot be undone and will delete all user data.',
+  'user.noPermission': 'Access Denied',
+  'user.adminRequired': 'Only administrators can access this page',
+  'common.refresh': 'Refresh',
+  'common.actions': 'Actions',
 };
 
 const translations = { 'zh-CN': zh, 'en': en };

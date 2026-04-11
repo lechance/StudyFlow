@@ -27,6 +27,8 @@ import {
   User,
   Palette,
   ChevronUp,
+  Users,
+  Shield,
 } from 'lucide-react';
 
 function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
@@ -40,6 +42,7 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
     { label: t('nav.pomodoro'), href: '/pomodoro', icon: Timer },
     { label: t('nav.stats'), href: '/stats', icon: BarChart3 },
     { label: t('nav.recycle'), href: '/recycle', icon: Trash2 },
+    ...(user?.role === 'admin' ? [{ label: t('nav.admin'), href: '/users', icon: Users }] : []),
   ];
 
   return (
@@ -161,6 +164,7 @@ function MobileNav() {
     { label: t('nav.pomodoro'), href: '/pomodoro', icon: Timer },
     { label: t('nav.stats'), href: '/stats', icon: BarChart3 },
     { label: t('nav.recycle'), href: '/recycle', icon: Trash2 },
+    ...(user?.role === 'admin' ? [{ label: t('nav.admin'), href: '/users', icon: Users }] : []),
   ];
 
   return (
