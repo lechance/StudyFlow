@@ -19,12 +19,11 @@ export async function createSession(userId: string): Promise<string> {
 }
 
 // 设置 session cookie 到 response
-export function setSessionCookieToResponse(response: NextResponse, sessionId: string) {
-  // 始终设置 secure: false，确保在 HTTP 和 HTTPS 下都能正常工作
-  // 在生产环境使用反向代理处理 HTTPS，Cookie 设置由代理负责
+export function setSessionCookieToResponse(response: NextResponse, sessionId: string, isHttps = false) {
+  // 根据 isHttps 参数决定是否使用 Secure 属性
   response.cookies.set(SESSION_COOKIE_NAME, sessionId, {
     httpOnly: true,
-    secure: false,
+    secure: isHttps,
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 7, // 7 days
     path: '/'

@@ -60,10 +60,14 @@ export async function POST(request: NextRequest) {
     });
 
     // 设置 session cookie
-    // 始终设置 secure: false，确保在 HTTP 和 HTTPS 下都能正常工作
+    // 根据请求协议决定是否使用 Secure 属性
+    const isHttps = request.headers.get('x-forwarded-proto') === 'https' || 
+                    request.headers.get('referer')?.startsWith('https://') ||
+                    request.url.startsWith('https://');
+    
     response.cookies.set(SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
-      secure: false,
+      secure: isHttps,
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: '/'
