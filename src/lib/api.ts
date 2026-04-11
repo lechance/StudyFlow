@@ -102,7 +102,10 @@ export const tasksApi = {
     }),
 
   clearRecycleBin: () =>
-    fetchApi('/tasks/recycle/clear', { method: 'DELETE' }),
+    fetchApi('/tasks/recycle/clear', { method: 'PUT' }),
+
+  permanentDelete: (recycleItemId: string) =>
+    fetchApi(`/tasks/recycle/permanent/${recycleItemId}`, { method: 'DELETE' }),
 };
 
 // 学习记录 API
