@@ -59,9 +59,8 @@ export async function POST(request: NextRequest) {
     // 设置 session cookie
     // 根据请求协议决定是否使用 Secure 属性
     // HTTPS 请求使用 Secure，HTTP 请求不使用
-    const isHttps = request.headers.get('x-forwarded-proto') === 'https' || 
-                    request.headers.get('referer')?.startsWith('https://') ||
-                    request.url.startsWith('https://');
+    const protocol = request.headers.get('x-forwarded-proto') || request.url.split('://')[0];
+    const isHttps = protocol === 'https';
     
     response.cookies.set(SESSION_COOKIE_NAME, sessionId, {
       httpOnly: true,
