@@ -1,20 +1,24 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 
-const dbPath = path.join(process.cwd(), 'data', 'study.db');
+const isProduction = process.env.NODE_ENV === 'production';
+// 生产环境使用 /tmp 可写目录
+const dbBaseDir = isProduction ? '/tmp/studyflow-data' : path.join(process.cwd(), 'data');
+const dbPath = path.join(dbBaseDir, 'study.db');
 
 let db: Database.Database;
 
 export function getDb(): Database.Database {
   if (!db) {
     const fs = require('fs');
-    const dir = path.dirname(dbPath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-      console.log('Created database directory:', dir);
+    
+    // Ensure database directory exists
+    if (!fs.existsSync(dbBaseDir)) {
+      fs.mkdirSync(dbBaseDir, { recursive: true });
+      console.log('Created database directory:', dbBaseDir);
     }
     
-    // Ensure database file exists and is writable
+    // Ensure database file exists
     if (!fs.existsSync(dbPath)) {
       fs.writeFileSync(dbPath, '');
       console.log('Created database file:', dbPath);
