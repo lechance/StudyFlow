@@ -16,9 +16,13 @@ start_service() {
         chmod -R 777 data 2>/dev/null || true
     fi
     
-    echo "Starting HTTP service on port ${DEPLOY_RUN_PORT} for deploy..."
-    PORT=${DEPLOY_RUN_PORT} node dist/server.js
+    # Ensure studyflow-data directory is writable (production)
+    chmod -R 777 /app/work/studyflow-data 2>/dev/null || true
+    
+    echo "Starting production service on port ${DEPLOY_RUN_PORT}..."
+    # 使用 COZE_PROJECT_ENV=PROD 确保运行在生产模式
+    COZE_PROJECT_ENV=PROD PORT=${DEPLOY_RUN_PORT} node dist/server.js
 }
 
-echo "Starting HTTP service on port ${DEPLOY_RUN_PORT} for deploy..."
+echo "Starting production service on port ${DEPLOY_RUN_PORT}..."
 start_service
