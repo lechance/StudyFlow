@@ -36,9 +36,6 @@ ENV NODE_ENV=production
 # Build Next.js application
 RUN pnpm next build
 
-# Bundle custom server with tsup (optional - for advanced use)
-RUN pnpm tsup src/server.ts --format cjs --platform node --target node20 --outDir dist --no-splitting --no-minify || true
-
 # ============================================
 # Stage 2: Runtime
 # ============================================
@@ -47,6 +44,7 @@ FROM node:20-alpine
 # Install runtime dependencies
 RUN apk add --no-cache \
     sqlite \
+    wget \
     && rm -rf /var/cache/apk/*
 
 WORKDIR /app
@@ -70,14 +68,8 @@ COPY --from=builder /app/src ./src
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 
-# Copy custom server (if built)
-COPY --from=builder /app/dist ./dist 2>/dev/null || mkdir -p ./dist
-
 # Create a writable database file if it doesn't exist
-RUN if [ ! -f /app/data/study.db ]; then \
-        touch /app/data/study.db && \
-        chmod 666 /app/data/study.db; \
-    fi
+RUN touch /app/data/study.db && chmod 666 /app/data/study.db
 
 # Always ensure data directory is writable
 RUN chmod -R 777 /app/data
@@ -86,5 +78,5 @@ RUN chmod -R 777 /app/data
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:5000 || exit 1
 
-# Default command - uses Next.js production server
+# Default command
 CMD ["pnpm", "next", "start", "-p", "5000", "-H", "0.0.0.0"]
