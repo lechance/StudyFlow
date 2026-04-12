@@ -448,7 +448,10 @@ export default function TasksPage() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => handleQuickAddToPlan(task.id, 'today')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleQuickAddToPlan(task.id, 'today');
+                    }}
                     title={t('tasks.addToToday')}
                   >
                     <Pin className="w-4 h-4 text-primary" />
@@ -457,7 +460,10 @@ export default function TasksPage() {
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() => handleOpenPlanDialog(task.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenPlanDialog(task.id);
+                    }}
                     title={t('tasks.selectDate')}
                   >
                     <Calendar className="w-4 h-4 text-primary" />
@@ -469,7 +475,10 @@ export default function TasksPage() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => handleRemoveFromPlan(task.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveFromPlan(task.id);
+                  }}
                   title={t('tasks.removeFromPlan')}
                 >
                   <PinOff className="w-4 h-4 text-muted-foreground" />
@@ -480,7 +489,10 @@ export default function TasksPage() {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
-                  onClick={() => handleStatusChange(task.id, 'in_progress')}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStatusChange(task.id, 'in_progress');
+                  }}
                   title={t('common.startTask')}
                 >
                   <PlayCircle className="w-4 h-4 text-cyan-500" />
@@ -490,7 +502,8 @@ export default function TasksPage() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8"
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   setEditingTask(task);
                   setShowEditDialog(true);
                 }}
@@ -502,7 +515,10 @@ export default function TasksPage() {
                 variant="ghost"
                 size="icon"
                 className="h-8 w-8 hover:text-destructive"
-                onClick={() => handleDeleteTask(task.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteTask(task.id);
+                }}
                 title={t('common.delete')}
               >
                 <Trash2 className="w-4 h-4" />
