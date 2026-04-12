@@ -9,6 +9,9 @@ DEPLOY_RUN_PORT=5000
 
 cd "${COZE_WORKSPACE_PATH}"
 
+echo "Generating version info..."
+node scripts/generate-version.js
+
 kill_port_if_listening() {
     local pids
     pids=$(ss -H -lntp 2>/dev/null | awk -v port="${DEPLOY_RUN_PORT}" '$4 ~ ":"port"$"' | grep -o 'pid=[0-9]*' | cut -d= -f2 | paste -sd' ' - || true)
