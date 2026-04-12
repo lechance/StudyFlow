@@ -38,8 +38,8 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
   const navItems = [
     { label: t('nav.home'), href: '/dashboard', icon: Home },
     { label: t('nav.tasks'), href: '/tasks', icon: BookOpen },
-    { label: t('nav.pomodoro'), href: '/pomodoro', icon: Timer },
     { label: t('nav.history'), href: '/history', icon: History },
+    { label: t('nav.pomodoro'), href: '/pomodoro', icon: Timer },
     { label: t('nav.stats'), href: '/stats', icon: BarChart3 },
     { label: t('nav.recycle'), href: '/recycle', icon: Trash2 },
   ];

@@ -332,7 +332,10 @@ export default function HistoryPage() {
                         <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                       </TableCell>
                       <TableCell>
-                        <div className="space-y-1">
+                        <Link 
+                          href={`/tasks/${task.id}`}
+                          className="space-y-1 hover:underline"
+                        >
                           <span className="line-through text-muted-foreground font-medium">
                             {task.title}
                           </span>
@@ -342,7 +345,7 @@ export default function HistoryPage() {
                               <span>{task.estimated_time}{t('tasks.minutes') || '分钟'}</span>
                             </div>
                           )}
-                        </div>
+                        </Link>
                       </TableCell>
                       <TableCell>
                         <Badge 

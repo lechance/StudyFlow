@@ -164,10 +164,11 @@ function LoginForm() {
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       required
+                      className="mb-4"
                     />
                   </div>
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="pt-2">
                   <Button 
                     type="submit" 
                     className="w-full gradient-bg" 
