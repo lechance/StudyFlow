@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTasks } from '@/hooks/useTasks';
 import { useLanguage } from '@/lib/i18n';
@@ -145,6 +145,11 @@ export default function TasksPage() {
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
   const [planningTaskId, setPlanningTaskId] = useState<string | null>(null);
   const [selectedPlanDate, setSelectedPlanDate] = useState<string>('');
+  
+  // Use transition for dialog state updates to prevent UI blocking
+  const [isPending, startAddDialogTransition] = useTransition();
+  const [, startEditDialogTransition] = useTransition();
+  const [, startPlanDialogTransition] = useTransition();
   
   // New task form
   const [newTask, setNewTask] = useState({
@@ -560,7 +565,7 @@ export default function TasksPage() {
           <h1 className="text-3xl font-bold">{t('tasks.title')}</h1>
           <p className="text-muted-foreground mt-1">{t('tasks.subtitle')}</p>
         </div>
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <Dialog open={showAddDialog} onOpenChange={(open) => startAddDialogTransition(() => setShowAddDialog(open))}>
           <DialogTrigger asChild>
             <Button className="gradient-bg">
               <Plus className="w-4 h-4 mr-2" />
@@ -950,7 +955,7 @@ export default function TasksPage() {
 
 
       {/* Edit Task Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+      <Dialog open={showEditDialog} onOpenChange={(open) => startEditDialogTransition(() => setShowEditDialog(open))}>
         <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>{t('tasks.editTask')}</DialogTitle>
@@ -1029,7 +1034,7 @@ export default function TasksPage() {
       </Dialog>
 
       {/* Add to Plan Dialog */}
-      <Dialog open={showPlanDialog} onOpenChange={setShowPlanDialog}>
+      <Dialog open={showPlanDialog} onOpenChange={(open) => startPlanDialogTransition(() => setShowPlanDialog(open))}>
         <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>{t('tasks.selectDateTitle')}</DialogTitle>
