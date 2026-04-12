@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTasks } from '@/hooks/useTasks';
 import { useLanguage } from '@/lib/i18n';
@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { AddTaskForm } from '@/components/AddTaskForm';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -150,18 +151,8 @@ export default function TasksPage() {
   const [isPending, startAddDialogTransition] = useTransition();
   const [, startEditDialogTransition] = useTransition();
   const [, startPlanDialogTransition] = useTransition();
-  
-  // New task form
-  const [newTask, setNewTask] = useState({
-    title: '',
-    category: 'study',
-    priority: 'medium',
-    deadline: '',
-    plan_date: '',
-    estimated_time: ''
-  });
 
-  // Category keys
+  // Category keys (for edit form)
   const categoryKeys = ['study', 'work', 'reading', 'exercise', 'other'];
 
   // Today's date string
@@ -220,41 +211,38 @@ export default function TasksPage() {
     return tasks.filter(task => !task.plan_date && task.status !== 'completed');
   }, [tasks]);
 
-  const handleAddTask = async () => {
-    if (!newTask.title.trim()) {
-      toast.error(t('tasks.taskName') + ' ' + t('common.required'));
-      return;
-    }
-
-    let planDate = newTask.plan_date;
-    if (!planDate) {
-      if (activeTab === 'today') planDate = todayStr;
+  // Handle task submission from AddTaskForm
+  const handleSubmitTask = useCallback(async (data: {
+    title: string;
+    category: string;
+    priority: 'high' | 'medium' | 'low';
+    deadline?: string;
+    plan_date?: string;
+    estimated_time?: number;
+  }): Promise<boolean> => {
+    let planDate = data.plan_date;
+    if (!planDate && activeTab === 'today') {
+      planDate = todayStr;
     }
 
     const success = await addTask({
-      title: newTask.title,
-      category: newTask.category,
-      priority: newTask.priority as 'high' | 'medium' | 'low',
-      deadline: newTask.deadline || undefined,
-      plan_date: planDate || undefined,
-      estimated_time: newTask.estimated_time ? parseInt(newTask.estimated_time) : undefined,
+      title: data.title,
+      category: data.category,
+      priority: data.priority,
+      deadline: data.deadline,
+      plan_date: planDate,
+      estimated_time: data.estimated_time,
       status: 'pending'
     });
 
     if (success) {
       toast.success(t('tasks.taskCreated'));
       setShowAddDialog(false);
-      setNewTask({ 
-        title: '', 
-        category: 'study', 
-        priority: 'medium', 
-        deadline: '', 
-        plan_date: '',
-        estimated_time: '' 
-      });
       await fetchTasks();
+      return true;
     }
-  };
+    return false;
+  }, [activeTab, todayStr, addTask, fetchTasks, t]);
 
   // Quick add task to today or this week
   const handleQuickAddToPlan = async (taskId: string, targetType: 'today' | 'week') => {
@@ -579,77 +567,10 @@ export default function TasksPage() {
                 {t('dashboard.createJourney')}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>{t('tasks.taskName')} *</Label>
-                <Input
-                  autoFocus
-                  placeholder={t('common.enterTaskName')}
-                  value={newTask.title}
-                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t('tasks.category')}</Label>
-                  <Select value={newTask.category} onValueChange={(v) => setNewTask({ ...newTask, category: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categoryKeys.map((key) => (
-                        <SelectItem key={key} value={key}>{t(`category.${key}`)}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('tasks.priority')}</Label>
-                  <Select value={newTask.priority} onValueChange={(v) => setNewTask({ ...newTask, priority: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="high">{t('priority.high')}</SelectItem>
-                      <SelectItem value="medium">{t('priority.medium')}</SelectItem>
-                      <SelectItem value="low">{t('priority.low')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>{t('tasks.planDate')}</Label>
-                  <Input
-                    type="date"
-                    value={newTask.plan_date}
-                    onChange={(e) => setNewTask({ ...newTask, plan_date: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>{t('tasks.deadline')}</Label>
-                  <Input
-                    type="date"
-                    value={newTask.deadline}
-                    onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>{t('tasks.estimatedTime')}</Label>
-                <Input
-                  type="number"
-                  placeholder="30"
-                  min="1"
-                  value={newTask.estimated_time}
-                  onChange={(e) => setNewTask({ ...newTask, estimated_time: e.target.value })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowAddDialog(false)}>{t('common.cancel')}</Button>
-              <Button className="gradient-bg" onClick={handleAddTask}>{t('tasks.createTask')}</Button>
-            </DialogFooter>
+            <AddTaskForm 
+              onSubmit={handleSubmitTask}
+              onCancel={() => setShowAddDialog(false)}
+            />
           </DialogContent>
         </Dialog>
       </div>
