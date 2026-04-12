@@ -110,8 +110,20 @@ export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
 }
 
+// 兼容旧格式（SHA256）的密码验证
+async function verifyLegacyPassword(password: string, hash: string): Promise<boolean> {
+  const crypto = require('crypto');
+  const computed = crypto.createHash('sha256').update(password + SESSION_SECRET).digest('hex');
+  return computed === hash;
+}
+
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return bcrypt.compare(password, hash);
+  // bcrypt 格式以 $2 开头
+  if (hash.startsWith('$2')) {
+    return bcrypt.compare(password, hash);
+  }
+  // 旧格式 SHA256
+  return verifyLegacyPassword(password, hash);
 }
 
 // 添加 sessions 表初始化
