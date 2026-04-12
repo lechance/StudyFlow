@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { getDb } from './db';
 import type { User } from './types';
+import bcrypt from 'bcryptjs';
 
 const SESSION_COOKIE_NAME = 'study_session';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'study-app-secret-key-2024';
@@ -104,14 +105,13 @@ function generateSessionId(): string {
   return result;
 }
 
-// 简单的密码哈希（生产环境建议使用 bcrypt）
-export function hashPassword(password: string): string {
-  const crypto = require('crypto');
-  return crypto.createHash('sha256').update(password + SESSION_SECRET).digest('hex');
+// 密码哈希（使用 bcrypt）
+export async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 10);
 }
 
-export function verifyPassword(password: string, hash: string): boolean {
-  return hashPassword(password) === hash;
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return bcrypt.compare(password, hash);
 }
 
 // 添加 sessions 表初始化

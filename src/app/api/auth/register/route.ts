@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = generateId();
-    const hashedPassword = hashPassword(password);
+    const hashedPassword = await hashPassword(password);
 
     // 创建用户
     db.prepare(`

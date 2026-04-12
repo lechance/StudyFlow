@@ -54,7 +54,7 @@ export async function PUT(
       values.push(body.signature || null);
     }
 
-    // 更新密码
+    // 更新密码 - 必须验证当前密码
     if (body.password !== undefined) {
       if (body.password.length < 6) {
         return NextResponse.json<ApiResponse>({
@@ -62,6 +62,33 @@ export async function PUT(
           error: '密码长度至少6位'
         }, { status: 400 });
       }
+      
+      // 验证当前密码
+      if (!body.currentPassword) {
+        return NextResponse.json<ApiResponse>({
+          success: false,
+          error: '请输入当前密码'
+        }, { status: 400 });
+      }
+      
+      // 获取当前用户的密码
+      const userRecord = db.prepare('SELECT password FROM users WHERE id = ?').get(id) as { password: string } | undefined;
+      if (!userRecord) {
+        return NextResponse.json<ApiResponse>({
+          success: false,
+          error: '用户不存在'
+        }, { status: 404 });
+      }
+      
+      // 验证当前密码是否正确
+      const isCurrentPasswordValid = await bcrypt.compare(body.currentPassword, userRecord.password);
+      if (!isCurrentPasswordValid) {
+        return NextResponse.json<ApiResponse>({
+          success: false,
+          error: '当前密码错误'
+        }, { status: 400 });
+      }
+      
       const hashedPassword = await bcrypt.hash(body.password, 10);
       updates.push('password = ?');
       values.push(hashedPassword);

@@ -152,7 +152,7 @@ export const usersApi = {
   getAll: () =>
     fetchApi<any[]>('/users'),
 
-  update: (id: string, data: { username?: string; email?: string; signature?: string; password?: string }) =>
+  update: (id: string, data: { username?: string; email?: string; signature?: string; password?: string; currentPassword?: string }) =>
     fetchApi<any>(`/users/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),

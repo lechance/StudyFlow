@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
     
     // 验证密码
-    const isPasswordValid = verifyPassword(password, user.password);
+    const isPasswordValid = await verifyPassword(password, user.password);
     if (!isPasswordValid) {
       return NextResponse.json<ApiResponse>({
         success: false,

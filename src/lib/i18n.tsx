@@ -409,6 +409,7 @@ const zh: Record<string, string> = {
   'settings.currentPasswordRequired': '请输入当前密码',
   'settings.passwordMinLength': '新密码长度至少6位',
   'settings.passwordMismatch': '两次输入的密码不一致',
+  'settings.passwordWrong': '当前密码错误',
   'settings.streakDays': '连续打卡',
   'settings.minutes': '分钟学习',
 };
@@ -818,6 +819,7 @@ const en: Record<string, string> = {
   'settings.currentPasswordRequired': 'Please enter current password',
   'settings.passwordMinLength': 'Password must be at least 6 characters',
   'settings.passwordMismatch': 'Passwords do not match',
+  'settings.passwordWrong': 'Current password is incorrect',
   'settings.streakDays': 'Streak Days',
   'settings.minutes': 'Minutes',
 };
