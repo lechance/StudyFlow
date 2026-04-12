@@ -639,15 +639,15 @@ export default function TasksPage() {
       {/* Tab Navigation */}
       <Tabs defaultValue="today" value={activeTab} onValueChange={(v) => setActiveTab(v as ViewTab)}>
         <TabsList className="grid w-full max-w-[480px] grid-cols-3 bg-muted/50 p-1 rounded-lg">
-          <TabsTrigger value="today" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all">
+          <TabsTrigger value="today" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-md transition-all font-medium">
             <Calendar className="w-4 h-4" />
             {t('tasks.todayPlan')}
           </TabsTrigger>
-          <TabsTrigger value="week" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all">
+          <TabsTrigger value="week" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-md transition-all font-medium">
             <CalendarDays className="w-4 h-4" />
             {t('tasks.weekPlan')}
           </TabsTrigger>
-          <TabsTrigger value="all" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all">
+          <TabsTrigger value="all" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-md transition-all font-medium">
             <Sparkles className="w-4 h-4" />
             {t('tasks.allTasks')}
           </TabsTrigger>
