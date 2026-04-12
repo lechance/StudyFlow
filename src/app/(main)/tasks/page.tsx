@@ -244,7 +244,7 @@ export default function TasksPage() {
     if (success) {
       toast.success(t('tasks.taskCreated'));
       setShowAddDialog(false);
-      await fetchTasks();
+      await fetchTasks(true);
       return true;
     }
     return false;
@@ -269,7 +269,7 @@ export default function TasksPage() {
       const res = await tasksApi.update(taskId, { plan_date: planDate });
       if (res.success) {
         toast.success(targetType === 'today' ? t('tasks.addedToToday') : t('tasks.addedToWeek'));
-        await fetchTasks();
+        await fetchTasks(true);
       }
     } catch {
       toast.error(t('common.error'));
@@ -295,7 +295,7 @@ export default function TasksPage() {
         setShowPlanDialog(false);
         setPlanningTaskId(null);
         setSelectedPlanDate('');
-        await fetchTasks();
+        await fetchTasks(true);
       }
     } catch {
       toast.error(t('common.error'));
@@ -308,7 +308,7 @@ export default function TasksPage() {
       const res = await tasksApi.update(taskId, { plan_date: null });
       if (res.success) {
         toast.success(t('tasks.removedFromPlan'));
-        await fetchTasks();
+        await fetchTasks(true);
       }
     } catch {
       toast.error(t('common.error'));
@@ -331,7 +331,7 @@ export default function TasksPage() {
       toast.success(t('tasks.taskUpdated'));
       setShowEditDialog(false);
       setEditingTask(null);
-      await fetchTasks();
+      await fetchTasks(true);
     }
   };
 
@@ -340,13 +340,13 @@ export default function TasksPage() {
     if (status === 'completed') {
       toast.success(t('common.greatJob'));
     }
-    await fetchTasks();
+    await fetchTasks(true);
   };
 
   const handleDeleteTask = async (taskId: string) => {
     await deleteTask(taskId);
     toast.success(t('tasks.taskDeleted'));
-    await fetchTasks();
+    await fetchTasks(true);
   };
 
   const handleClearCompleted = async () => {
@@ -354,7 +354,7 @@ export default function TasksPage() {
     await clearCompleted(completedIds);
     setShowClearDialog(false);
     toast.success(t('tasks.cleared'));
-    await fetchTasks();
+    await fetchTasks(true);
   };
 
   // Render task card with detailed info - clickable to view detail

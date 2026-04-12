@@ -30,14 +30,14 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const isFetched = useRef(false);
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(async (force = false) => {
     if (!user) {
       setTasks([]);
       return;
     }
     
-    // Avoid duplicate fetching
-    if (isFetched.current && !loading) {
+    // Avoid duplicate fetching unless forced
+    if (isFetched.current && !loading && !force) {
       return;
     }
     
