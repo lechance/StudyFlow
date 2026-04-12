@@ -75,6 +75,7 @@ const zh: Record<string, string> = {
   'nav.home': '首页',
   'nav.tasks': '任务管理',
   'nav.pomodoro': '番茄钟',
+  'nav.history': '历史任务',
   'nav.stats': '数据统计',
   'nav.recycle': '回收站',
   'nav.admin': '用户管理',
@@ -356,6 +357,27 @@ const zh: Record<string, string> = {
   'user.adminRequired': '只有管理员可以访问此页面',
   'common.refresh': '刷新',
   'common.actions': '操作',
+
+  // History
+  'history.title': '历史任务',
+  'history.subtitle': '共 {count} 个已完成任务',
+  'history.searchPlaceholder': '搜索任务名称...',
+  'history.allCategories': '所有分类',
+  'history.sortBy': '排序方式',
+  'history.completedAt': '完成时间',
+  'history.taskName': '任务名称',
+  'history.actions': '操作',
+  'history.showing': '显示',
+  'history.tasks': '个任务',
+  'history.noCompletedTasks': '暂无已完成的任务',
+  'history.noMatchingTasks': '没有匹配的任务',
+  'history.restore': '恢复',
+  'history.taskRestored': '任务已恢复',
+  'history.completedToday': '今天',
+  'history.completedYesterday': '昨天',
+  'history.daysAgo': '天前',
+  'history.weeksAgo': '周前',
+  'history.monthsAgo': '个月前',
 };
 
 // English translations
@@ -396,6 +418,7 @@ const en: Record<string, string> = {
   'nav.home': 'Home',
   'nav.tasks': 'Tasks',
   'nav.pomodoro': 'Pomodoro',
+  'nav.history': 'History',
   'nav.stats': 'Statistics',
   'nav.recycle': 'Recycle Bin',
   'nav.admin': 'Admin',
@@ -710,6 +733,27 @@ const en: Record<string, string> = {
   'user.adminRequired': 'Only administrators can access this page',
   'common.refresh': 'Refresh',
   'common.actions': 'Actions',
+
+  // History
+  'history.title': 'History',
+  'history.subtitle': '{count} completed tasks',
+  'history.searchPlaceholder': 'Search task name...',
+  'history.allCategories': 'All Categories',
+  'history.sortBy': 'Sort By',
+  'history.completedAt': 'Completed At',
+  'history.taskName': 'Task Name',
+  'history.actions': 'Actions',
+  'history.showing': 'Showing',
+  'history.tasks': 'tasks',
+  'history.noCompletedTasks': 'No completed tasks yet',
+  'history.noMatchingTasks': 'No matching tasks',
+  'history.restore': 'Restore',
+  'history.taskRestored': 'Task restored',
+  'history.completedToday': 'Today',
+  'history.completedYesterday': 'Yesterday',
+  'history.daysAgo': ' days ago',
+  'history.weeksAgo': ' weeks ago',
+  'history.monthsAgo': ' months ago',
 };
 
 const translations = { 'zh-CN': zh, 'en': en };
