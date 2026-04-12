@@ -158,19 +158,19 @@ export default function TasksPage() {
   // Today's date string
   const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
 
-  // Filter tasks by plan_date (including completed tasks)
+  // Filter tasks by plan_date (exclude completed tasks)
   const todayTasks = useMemo(() => {
-    return tasks.filter(task => task.plan_date === todayStr);
+    return tasks.filter(task => task.plan_date === todayStr && task.status !== 'completed');
   }, [tasks, todayStr]);
 
-  // Week tasks with memoized sorting (including completed tasks)
+  // Week tasks with memoized sorting (exclude completed tasks)
   const weekTasks = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const weekEnd = addDays(today, 7);
     weekEnd.setHours(23, 59, 59, 999);
     const filtered = tasks.filter(task => {
-      if (!task.plan_date) return false;
+      if (!task.plan_date || task.status === 'completed') return false;
       const planDate = new Date(task.plan_date);
       planDate.setHours(0, 0, 0, 0);
       return planDate >= today && planDate <= weekEnd;
@@ -183,15 +183,14 @@ export default function TasksPage() {
     });
   }, [tasks]);
 
-  // All tasks sorted by priority (completed tasks at bottom)
+  // All tasks sorted by priority (exclude completed tasks)
   const sortedAllTasks = useMemo(() => {
     const priorityOrder = { high: 1, medium: 2, low: 3 };
-    return [...tasks].sort((a, b) => {
-      // Completed tasks go to the bottom
-      if (a.status === 'completed' && b.status !== 'completed') return 1;
-      if (a.status !== 'completed' && b.status === 'completed') return -1;
-      return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
-    });
+    return tasks
+      .filter(task => task.status !== 'completed')
+      .sort((a, b) => {
+        return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
+      });
   }, [tasks]);
 
   // Filtered tasks based on active tab
@@ -212,9 +211,9 @@ export default function TasksPage() {
     return { total, completed, inProgress, pending, highPriority, subtaskTotal, subtaskCompleted };
   }, [tasks]);
 
-  // Get tasks not in any plan (including completed tasks for display)
+  // Get tasks not in any plan (exclude completed tasks)
   const unPlannedTasks = useMemo(() => {
-    return tasks.filter(task => !task.plan_date);
+    return tasks.filter(task => !task.plan_date && task.status !== 'completed');
   }, [tasks]);
 
   // Handle task submission from AddTaskForm
