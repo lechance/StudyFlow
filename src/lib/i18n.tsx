@@ -435,6 +435,18 @@ const zh: Record<string, string> = {
   'settings.connectionFailed': '连接失败',
   'settings.storageRequired': '请填写完整的 S3 配置信息',
   'settings.storageSaved': '存储设置已保存',
+  // Database Backup
+  'settings.dbBackup': '数据库备份',
+  'settings.dbBackupDesc': '备份和恢复 SQLite 数据库文件',
+  'settings.autoBackup': '自动备份',
+  'settings.autoBackupDesc': '自动定时备份数据库到 S3',
+  'settings.backupInterval': '备份间隔',
+  'settings.hourly': '每小时',
+  'settings.daily': '每天',
+  'settings.weekly': '每周',
+  'settings.lastAutoBackup': '上次自动备份',
+  'settings.manualBackup': '立即备份',
+  'settings.restore': '恢复',
   // Backup & Restore
   'settings.backupRestore': '备份与恢复',
   'settings.backupRestoreDesc': '将任务数据备份到 S3 或从 S3 恢复',
@@ -448,8 +460,11 @@ const zh: Record<string, string> = {
   'settings.backupFailed': '备份失败',
   'settings.restoreSuccess': '任务已从 S3 恢复',
   'settings.restoreFailed': '恢复失败',
-  'settings.confirmRestore': '确定要从 S3 恢复任务吗？当前任务不会被删除。',
+  'settings.confirmRestore': '确定要从备份恢复数据库吗？当前数据将被覆盖。',
   'settings.enableStorageFirst': '请先启用 S3 存储',
+  'settings.databaseBackup': '数据库备份',
+  'settings.databaseBackupDesc': '备份和恢复您的 SQLite 数据库文件',
+  'settings.noBackups': '暂无备份记录',
 };
 
 // English translations
@@ -883,6 +898,18 @@ const en: Record<string, string> = {
   'settings.connectionFailed': 'Connection failed',
   'settings.storageRequired': 'Please fill in all S3 configuration fields',
   'settings.storageSaved': 'Storage settings saved',
+  // Database Backup
+  'settings.dbBackup': 'Database Backup',
+  'settings.dbBackupDesc': 'Backup and restore SQLite database files',
+  'settings.autoBackup': 'Auto Backup',
+  'settings.autoBackupDesc': 'Automatically backup database to S3 on schedule',
+  'settings.backupInterval': 'Backup Interval',
+  'settings.hourly': 'Every Hour',
+  'settings.daily': 'Daily',
+  'settings.weekly': 'Weekly',
+  'settings.lastAutoBackup': 'Last Auto Backup',
+  'settings.manualBackup': 'Backup Now',
+  'settings.restore': 'Restore',
   // Backup & Restore
   'settings.backupRestore': 'Backup & Restore',
   'settings.backupRestoreDesc': 'Backup tasks to S3 or restore from S3',
@@ -896,8 +923,11 @@ const en: Record<string, string> = {
   'settings.backupFailed': 'Backup failed',
   'settings.restoreSuccess': 'Tasks restored from S3',
   'settings.restoreFailed': 'Restore failed',
-  'settings.confirmRestore': 'Are you sure you want to restore tasks from S3? Current tasks will not be deleted.',
+  'settings.confirmRestore': 'Are you sure you want to restore database from backup? Current data will be overwritten.',
   'settings.enableStorageFirst': 'Please enable S3 storage first',
+  'settings.databaseBackup': 'Database Backup',
+  'settings.databaseBackupDesc': 'Backup and restore your SQLite database files',
+  'settings.noBackups': 'No backup records',
 };
 
 const translations = { 'zh-CN': zh, 'en': en };

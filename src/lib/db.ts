@@ -10,6 +10,10 @@ const dbPath = path.join(dbBaseDir, 'study.db');
 // 存储在 global 上的键名
 const DB_GLOBAL_KEY = '__studyflow_db__';
 
+// 导出数据库路径供备份使用
+export const DB_PATH = dbPath;
+export const DB_BASE_DIR = dbBaseDir;
+
 // 获取全局数据库实例
 function getGlobalDb(): Database.Database | undefined {
   return (global as any)[DB_GLOBAL_KEY];
@@ -188,6 +192,9 @@ function initializeTables(database: Database.Database) {
         bucket_name TEXT,
         region TEXT DEFAULT 'us-east-1',
         enabled INTEGER DEFAULT 0,
+        auto_backup_enabled INTEGER DEFAULT 0,
+        auto_backup_interval TEXT DEFAULT 'daily',
+        last_auto_backup TEXT,
         created_at TEXT DEFAULT (datetime('now')),
         updated_at TEXT DEFAULT (datetime('now')),
         FOREIGN KEY (user_id) REFERENCES users(id)
@@ -211,6 +218,31 @@ function initializeTables(database: Database.Database) {
   // Migration: Add description column if it doesn't exist (subtasks table)
   try {
     database.exec("ALTER TABLE subtasks ADD COLUMN description TEXT");
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column name')) {
+      // Column already exists or other error, ignore
+    }
+  }
+  
+  // Migration: Add auto backup columns to storage_settings
+  try {
+    database.exec("ALTER TABLE storage_settings ADD COLUMN auto_backup_enabled INTEGER DEFAULT 0");
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column name')) {
+      // Column already exists or other error, ignore
+    }
+  }
+  
+  try {
+    database.exec("ALTER TABLE storage_settings ADD COLUMN auto_backup_interval TEXT DEFAULT 'daily'");
+  } catch (e: any) {
+    if (!e.message.includes('duplicate column name')) {
+      // Column already exists or other error, ignore
+    }
+  }
+  
+  try {
+    database.exec("ALTER TABLE storage_settings ADD COLUMN last_auto_backup TEXT");
   } catch (e: any) {
     if (!e.message.includes('duplicate column name')) {
       // Column already exists or other error, ignore

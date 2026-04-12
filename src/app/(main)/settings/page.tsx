@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/lib/i18n';
-import { usersApi, storageApi } from '@/lib/api';
+import { usersApi, storageApi, databaseBackupApi } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,22 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { User, Mail, Signature, Lock, Loader2, CheckCircle2, AlertCircle, CheckCircle, HardDrive, Wifi, WifiOff } from 'lucide-react';
+import { User, Mail, Signature, Lock, Loader2, CheckCircle2, AlertCircle, CheckCircle, HardDrive, Wifi, WifiOff, Database, Clock, History, RotateCcw } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+
+// Type definitions
+interface BackupRecord {
+  key: string;
+  filename: string;
+  size: number;
+  created_at: string;
+}
 
 // 密码强度计算函数
 function getPasswordStrength(password: string): { level: number; label: string; color: string } {
@@ -58,6 +73,16 @@ export default function SettingsPage() {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [connectionMessage, setConnectionMessage] = useState('');
 
+  // Auto backup settings
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(false);
+  const [autoBackupInterval, setAutoBackupInterval] = useState('daily');
+
+  // Database backup state
+  const [backups, setBackups] = useState<BackupRecord[]>([]);
+  const [backingUp, setBackingUp] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [lastAutoBackup, setLastAutoBackup] = useState<string | null>(null);
+
   // 计算密码强度
   const passwordStrength = useMemo(() => getPasswordStrength(newPassword), [newPassword]);
   
@@ -81,6 +106,7 @@ export default function SettingsPage() {
     if (activeSection === 'storage' && user) {
       loadStorageSettings();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection, user]);
 
   const loadStorageSettings = async () => {
@@ -92,10 +118,75 @@ export default function SettingsPage() {
         setBucketName(res.data.bucket_name || '');
         setRegion(res.data.region || 'us-east-1');
         setStorageEnabled(res.data.enabled === 1);
+        setAutoBackupEnabled(res.data.auto_backup_enabled === 1);
+        setAutoBackupInterval(res.data.auto_backup_interval || 'daily');
+        setLastAutoBackup(res.data.last_auto_backup);
         setConnectionStatus(res.data.endpoint_url ? 'success' : 'idle');
+        
+        // Load backup list if storage is enabled
+        if (res.data.enabled === 1) {
+          loadBackupList();
+        }
       }
     } catch (error) {
       console.error('Failed to load storage settings:', error);
+    }
+  };
+
+  // Load backup list
+  const loadBackupList = async () => {
+    try {
+      const res = await databaseBackupApi.listBackups();
+      if (res.success && res.data) {
+        setBackups(res.data);
+      }
+    } catch (error) {
+      console.error('Failed to load backup list:', error);
+    }
+  };
+
+  // Manual backup
+  const handleManualBackup = async () => {
+    if (!storageEnabled) {
+      toast.error(t('settings.enableStorageFirst') || '请先启用 S3 存储');
+      return;
+    }
+
+    setBackingUp(true);
+    try {
+      const res = await databaseBackupApi.backup();
+      if (res.success) {
+        toast.success(t('settings.backupSuccess') || '数据库备份成功');
+        await loadBackupList();
+        setLastAutoBackup(new Date().toISOString());
+      } else {
+        toast.error(res.error || t('settings.backupFailed') || '备份失败');
+      }
+    } catch {
+      toast.error(t('settings.backupFailed') || '备份失败');
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
+  // Restore from backup
+  const handleRestore = async (backupKey: string) => {
+    if (!confirm(t('settings.confirmRestore') || '确定要从备份恢复数据库吗？当前数据将被覆盖。')) {
+      return;
+    }
+
+    setRestoring(true);
+    try {
+      const res = await databaseBackupApi.restore(backupKey);
+      if (res.success) {
+        toast.success(t('settings.restoreSuccess') || '数据库恢复成功，请刷新页面');
+      } else {
+        toast.error(res.error || t('settings.restoreFailed') || '恢复失败');
+      }
+    } catch {
+      toast.error(t('settings.restoreFailed') || '恢复失败');
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -151,7 +242,9 @@ export default function SettingsPage() {
         secret_key: secretKey,
         bucket_name: bucketName,
         region: region,
-        enabled: storageEnabled
+        enabled: storageEnabled,
+        auto_backup_enabled: autoBackupEnabled,
+        auto_backup_interval: autoBackupInterval
       });
 
       if (res.success) {
@@ -674,6 +767,126 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Database Backup Section */}
+      {activeSection === 'storage' && storageEnabled && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="w-5 h-5" />
+              {t('settings.databaseBackup') || '数据库备份'}
+            </CardTitle>
+            <CardDescription>
+              {t('settings.databaseBackupDesc') || '备份和恢复您的 SQLite 数据库文件'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Auto Backup Settings */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Clock className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">{t('settings.autoBackup') || '自动备份'}</p>
+                    <p className="text-xs text-muted-foreground">{t('settings.autoBackupDesc') || '按设定时间自动备份数据库'}</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={autoBackupEnabled}
+                  onCheckedChange={setAutoBackupEnabled}
+                />
+              </div>
+
+              {autoBackupEnabled && (
+                <div className="space-y-2">
+                  <Label>{t('settings.backupInterval') || '备份间隔'}</Label>
+                  <Select value={autoBackupInterval} onValueChange={setAutoBackupInterval}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hourly">{t('settings.hourly') || '每小时'}</SelectItem>
+                      <SelectItem value="daily">{t('settings.daily') || '每天'}</SelectItem>
+                      <SelectItem value="weekly">{t('settings.weekly') || '每周'}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {lastAutoBackup && (
+                <p className="text-xs text-muted-foreground">
+                  {t('settings.lastBackup') || '上次备份'}: {new Date(lastAutoBackup).toLocaleString()}
+                </p>
+              )}
+
+              <Button 
+                onClick={handleManualBackup}
+                disabled={backingUp || !storageEnabled}
+                className="gap-2"
+              >
+                {backingUp ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    {t('settings.backingUp') || '备份中...'}
+                  </>
+                ) : (
+                  <>
+                    <Database className="w-4 h-4" />
+                    {t('settings.backupNow') || '立即备份'}
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Backup History */}
+            <div className="space-y-3">
+              <h3 className="font-medium flex items-center gap-2">
+                <History className="w-4 h-4" />
+                {t('settings.backupHistory') || '备份历史'}
+              </h3>
+              
+              {backups.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4 text-center">
+                  {t('settings.noBackups') || '暂无备份记录'}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {backups.map((backup, index) => (
+                    <div 
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Database className="w-4 h-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">
+                            {backup.filename || 'database_backup.db'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(backup.created_at).toLocaleString()} - {backup.size ? `${(backup.size / 1024).toFixed(2)} KB` : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRestore(backup.key || backup.filename)}
+                          disabled={restoring}
+                          className="gap-1"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          {t('settings.restore') || '恢复'}
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

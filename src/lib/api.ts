@@ -195,6 +195,8 @@ export const storageApi = {
     bucket_name?: string;
     region?: string;
     enabled?: boolean;
+    auto_backup_enabled?: boolean;
+    auto_backup_interval?: string;
   }) =>
     fetchApi<any>('/storage/settings', {
       method: 'POST',
@@ -211,6 +213,24 @@ export const storageApi = {
     fetchApi<any>('/storage/connection-test', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+};
+
+// 数据库备份 API
+export const databaseBackupApi = {
+  backup: () =>
+    fetchApi<any>('/database/backup', { method: 'POST' }),
+  
+  listBackups: () =>
+    fetchApi<any[]>('/database/backup'),
+  
+  getLatestBackup: () =>
+    fetchApi<any>('/database/restore'),
+  
+  restore: (backupKey: string) =>
+    fetchApi<any>('/database/restore', {
+      method: 'POST',
+      body: JSON.stringify({ backupKey }),
     }),
 };
 
