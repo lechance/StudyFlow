@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, verifyPassword, hashPassword } from '@/lib/auth';
 import type { ApiResponse } from '@/lib/types';
-import bcrypt from 'bcryptjs';
 
 // 更新用户信息
 export async function PUT(
@@ -81,7 +80,7 @@ export async function PUT(
       }
       
       // 验证当前密码是否正确
-      const isCurrentPasswordValid = await bcrypt.compare(body.currentPassword, userRecord.password);
+      const isCurrentPasswordValid = await verifyPassword(body.currentPassword, userRecord.password);
       if (!isCurrentPasswordValid) {
         return NextResponse.json<ApiResponse>({
           success: false,
@@ -89,7 +88,7 @@ export async function PUT(
         }, { status: 400 });
       }
       
-      const hashedPassword = await bcrypt.hash(body.password, 10);
+      const hashedPassword = await hashPassword(body.password);
       updates.push('password = ?');
       values.push(hashedPassword);
     }
