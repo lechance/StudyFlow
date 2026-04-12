@@ -562,12 +562,12 @@ export default function TasksPage() {
   }
 
   return (
-    <div className="space-y-6 animate-in">
+    <div className="space-y-4 animate-in">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold">{t('tasks.title')}</h1>
-          <p className="text-muted-foreground mt-1">{t('tasks.subtitle')}</p>
+          <h1 className="text-2xl font-bold">{t('tasks.title')}</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">{t('tasks.subtitle')}</p>
         </div>
         <Dialog open={showAddDialog} onOpenChange={(open) => startAddDialogTransition(() => setShowAddDialog(open))}>
           <DialogTrigger asChild>
@@ -592,15 +592,15 @@ export default function TasksPage() {
       </div>
 
       {/* Overview Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <Target className="w-6 h-6 text-blue-500" />
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <Target className="w-5 h-5 text-blue-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{overallStats.total}</p>
+                <p className="text-xl font-bold">{overallStats.total}</p>
                 <p className="text-xs text-muted-foreground">{t('tasks.total')}</p>
               </div>
             </div>
@@ -608,13 +608,13 @@ export default function TasksPage() {
         </Card>
         
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-emerald-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{overallStats.completed}</p>
+                <p className="text-xl font-bold">{overallStats.completed}</p>
                 <p className="text-xs text-muted-foreground">{t('tasks.completed')}</p>
               </div>
             </div>
@@ -622,13 +622,13 @@ export default function TasksPage() {
         </Card>
         
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                <ListTodo className="w-6 h-6 text-purple-500" />
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                <ListTodo className="w-5 h-5 text-purple-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{overallStats.subtaskTotal > 0 
+                <p className="text-xl font-bold">{overallStats.subtaskTotal > 0 
                   ? `${overallStats.subtaskCompleted}/${overallStats.subtaskTotal}` 
                   : '-'}
                 </p>
@@ -639,13 +639,13 @@ export default function TasksPage() {
         </Card>
         
         <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-red-500/20 flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-red-500" />
+          <CardContent className="pt-3 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-red-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{overallStats.highPriority}</p>
+                <p className="text-xl font-bold">{overallStats.highPriority}</p>
                 <p className="text-xs text-muted-foreground">{t('tasks.highPriority')}</p>
               </div>
             </div>
@@ -655,25 +655,25 @@ export default function TasksPage() {
 
       {/* Tab Navigation */}
       <Tabs defaultValue="today" value={activeTab} onValueChange={(v) => setActiveTab(v as ViewTab)}>
-        <TabsList className="grid w-full max-w-[500px] grid-cols-3">
-          <TabsTrigger value="today" className="flex items-center gap-2">
+        <TabsList className="grid w-full max-w-[480px] grid-cols-3 bg-muted/50 p-1 rounded-lg">
+          <TabsTrigger value="today" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all">
             <Calendar className="w-4 h-4" />
             {t('tasks.todayPlan')}
           </TabsTrigger>
-          <TabsTrigger value="week" className="flex items-center gap-2">
+          <TabsTrigger value="week" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all">
             <CalendarDays className="w-4 h-4" />
             {t('tasks.weekPlan')}
           </TabsTrigger>
-          <TabsTrigger value="all" className="flex items-center gap-2">
+          <TabsTrigger value="all" className="flex items-center gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md transition-all">
             <Sparkles className="w-4 h-4" />
             {t('tasks.allTasks')}
           </TabsTrigger>
         </TabsList>
 
         {/* Today Plan Tab */}
-        <TabsContent value="today" className="space-y-4 mt-4">
+        <TabsContent value="today" className="space-y-3 mt-3">
           {/* Today's Tasks */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <h3 className="font-semibold text-lg flex items-center gap-2">
               <ListTodo className="w-5 h-5" />
               {t('tasks.todayTasks')} ({todayTasks.length})
@@ -696,9 +696,9 @@ export default function TasksPage() {
 
           {/* Quick Add Section */}
           {unPlannedTasks.length > 0 && (
-            <Card className="border-dashed border-2 bg-muted/30">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base flex items-center gap-2">
+            <Card className="border-dashed border-2 bg-muted/20 mt-3">
+              <CardHeader className="pb-2 pt-3">
+                <CardTitle className="text-sm flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-amber-500" />
                   {t('tasks.quickAddToPlan')} ({unPlannedTasks.length})
                 </CardTitle>
@@ -749,9 +749,9 @@ export default function TasksPage() {
         </TabsContent>
 
         {/* Week Plan Tab */}
-        <TabsContent value="week" className="space-y-4 mt-4">
+        <TabsContent value="week" className="space-y-3 mt-3">
           {/* Week Tasks List */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <h3 className="font-semibold text-lg flex items-center gap-2">
               <CalendarDays className="w-5 h-5" />
               {t('tasks.weekTasks')} ({weekTasks.length})
@@ -837,7 +837,7 @@ export default function TasksPage() {
           )}
 
           {/* All Tasks */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <h3 className="font-semibold text-lg flex items-center gap-2">
               <Sparkles className="w-5 h-5" />
               {t('tasks.allTasks')} ({tasks.length})
