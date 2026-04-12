@@ -12,6 +12,9 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BookOpen, GraduationCap, Loader2 } from 'lucide-react';
 
+// 禁用注册功能 - 设为 true 则关闭注册
+const DISABLE_REGISTRATION = true;
+
 function LoginForm() {
   const router = useRouter();
   const { login, register } = useAuth();
@@ -125,9 +128,9 @@ function LoginForm() {
 
         <Card className="shadow-xl border-0 glass">
           <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsList className={`w-full mb-4 ${DISABLE_REGISTRATION ? 'grid-cols-1' : 'grid-cols-2'}`}>
               <TabsTrigger value="login">{t('auth.login')}</TabsTrigger>
-              <TabsTrigger value="register">{t('auth.register')}</TabsTrigger>
+              {!DISABLE_REGISTRATION && <TabsTrigger value="register">{t('auth.register')}</TabsTrigger>}
             </TabsList>
             
             <TabsContent value="login">
@@ -185,69 +188,70 @@ function LoginForm() {
                 </CardFooter>
               </form>
             </TabsContent>
-            
-            <TabsContent value="register">
-              <form onSubmit={handleRegister}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-xl">{t('auth.createAccount')}</CardTitle>
-                  <CardDescription>{t('auth.startJourney')}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {error && (
-                    <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">
-                      {error}
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label htmlFor="reg-username">{t('auth.username')} *</Label>
-                    <Input
-                      id="reg-username"
-                      placeholder={t('login.enterUsername')}
-                      value={regUsername}
-                      onChange={(e) => setRegUsername(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="reg-email">{t('auth.email')} ({t('login.optional')})</Label>
-                    <Input
-                      id="reg-email"
-                      type="email"
-                      placeholder={t('login.enterEmail')}
-                      value={regEmail}
-                      onChange={(e) => setRegEmail(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="reg-password">{t('auth.password')} *</Label>
-                    <Input
-                      id="reg-password"
-                      type="password"
-                      placeholder={t('login.enterPasswordMin')}
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      required
-                      minLength={6}
-                    />
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit" className="w-full gradient-bg" disabled={loading}>
-                    {loading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {t('common.loading')}
-                      </>
-                    ) : (
-                      <>
-                        <GraduationCap className="mr-2 h-4 w-4" />
-                        {t('auth.register')}
-                      </>
+            {!DISABLE_REGISTRATION ? (
+              <TabsContent value="register">
+                <form onSubmit={handleRegister}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xl">{t('auth.createAccount')}</CardTitle>
+                    <CardDescription>{t('auth.startJourney')}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {error && (
+                      <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">
+                        {error}
+                      </div>
                     )}
-                  </Button>
-                </CardFooter>
-              </form>
-            </TabsContent>
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-username">{t('auth.username')} *</Label>
+                      <Input
+                        id="reg-username"
+                        placeholder={t('login.enterUsername')}
+                        value={regUsername}
+                        onChange={(e) => setRegUsername(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-email">{t('auth.email')} ({t('login.optional')})</Label>
+                      <Input
+                        id="reg-email"
+                        type="email"
+                        placeholder={t('login.enterEmail')}
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="reg-password">{t('auth.password')} *</Label>
+                      <Input
+                        id="reg-password"
+                        type="password"
+                        placeholder={t('login.enterPasswordMin')}
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button type="submit" className="w-full gradient-bg" disabled={loading}>
+                      {loading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {t('common.loading')}
+                        </>
+                      ) : (
+                        <>
+                          <GraduationCap className="mr-2 h-4 w-4" />
+                          {t('auth.register')}
+                        </>
+                      )}
+                    </Button>
+                  </CardFooter>
+                </form>
+              </TabsContent>
+            ) : null}
           </Tabs>
         </Card>
 
