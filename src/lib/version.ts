@@ -16,6 +16,7 @@ let versionData: VersionInfo = {
 };
 
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   versionData = require('./version.json');
 } catch {
   // 使用默认值

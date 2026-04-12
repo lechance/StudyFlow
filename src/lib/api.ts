@@ -214,6 +214,18 @@ export const storageApi = {
     }),
 };
 
+// 任务备份 API
+export const tasksBackupApi = {
+  backup: () =>
+    fetchApi<any>('/tasks/backup', { method: 'POST' }),
+  
+  restore: () =>
+    fetchApi<any>('/tasks/restore', { method: 'POST' }),
+  
+  listBackups: () =>
+    fetchApi<any[]>('/tasks/restore'),
+};
+
 // Combined API object for easier access
 export const api = {
   get: async <T = any>(endpoint: string): Promise<ApiResponse<T>> => {

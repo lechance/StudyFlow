@@ -435,6 +435,21 @@ const zh: Record<string, string> = {
   'settings.connectionFailed': '连接失败',
   'settings.storageRequired': '请填写完整的 S3 配置信息',
   'settings.storageSaved': '存储设置已保存',
+  // Backup & Restore
+  'settings.backupRestore': '备份与恢复',
+  'settings.backupRestoreDesc': '将任务数据备份到 S3 或从 S3 恢复',
+  'settings.lastBackup': '上次备份',
+  'settings.backupHistory': '备份历史',
+  'settings.backingUp': '备份中...',
+  'settings.backupNow': '立即备份',
+  'settings.restoreNow': '从备份恢复',
+  'settings.restoring': '恢复中...',
+  'settings.backupSuccess': '任务已备份到 S3',
+  'settings.backupFailed': '备份失败',
+  'settings.restoreSuccess': '任务已从 S3 恢复',
+  'settings.restoreFailed': '恢复失败',
+  'settings.confirmRestore': '确定要从 S3 恢复任务吗？当前任务不会被删除。',
+  'settings.enableStorageFirst': '请先启用 S3 存储',
 };
 
 // English translations
@@ -868,6 +883,21 @@ const en: Record<string, string> = {
   'settings.connectionFailed': 'Connection failed',
   'settings.storageRequired': 'Please fill in all S3 configuration fields',
   'settings.storageSaved': 'Storage settings saved',
+  // Backup & Restore
+  'settings.backupRestore': 'Backup & Restore',
+  'settings.backupRestoreDesc': 'Backup tasks to S3 or restore from S3',
+  'settings.lastBackup': 'Last Backup',
+  'settings.backupHistory': 'Backup History',
+  'settings.backingUp': 'Backing up...',
+  'settings.backupNow': 'Backup Now',
+  'settings.restoreNow': 'Restore from Backup',
+  'settings.restoring': 'Restoring...',
+  'settings.backupSuccess': 'Tasks backed up to S3',
+  'settings.backupFailed': 'Backup failed',
+  'settings.restoreSuccess': 'Tasks restored from S3',
+  'settings.restoreFailed': 'Restore failed',
+  'settings.confirmRestore': 'Are you sure you want to restore tasks from S3? Current tasks will not be deleted.',
+  'settings.enableStorageFirst': 'Please enable S3 storage first',
 };
 
 const translations = { 'zh-CN': zh, 'en': en };
