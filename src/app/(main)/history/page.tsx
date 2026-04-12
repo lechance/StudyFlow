@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import { useTasks } from '@/hooks/useTasks';
 import { useLanguage } from '@/lib/i18n';
 import type { Task } from '@/lib/types';
