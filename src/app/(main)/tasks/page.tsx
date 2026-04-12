@@ -158,18 +158,21 @@ export default function TasksPage() {
   // Today's date string
   const todayStr = useMemo(() => format(new Date(), 'yyyy-MM-dd'), []);
 
-  // Filter tasks by plan_date
+  // Filter tasks by plan_date (including completed tasks)
   const todayTasks = useMemo(() => {
     return tasks.filter(task => task.plan_date === todayStr);
   }, [tasks, todayStr]);
 
-  // Week tasks with memoized sorting
+  // Week tasks with memoized sorting (including completed tasks)
   const weekTasks = useMemo(() => {
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const weekEnd = addDays(today, 7);
+    weekEnd.setHours(23, 59, 59, 999);
     const filtered = tasks.filter(task => {
       if (!task.plan_date) return false;
       const planDate = new Date(task.plan_date);
+      planDate.setHours(0, 0, 0, 0);
       return planDate >= today && planDate <= weekEnd;
     });
     // Sort by plan_date once
@@ -180,10 +183,13 @@ export default function TasksPage() {
     });
   }, [tasks]);
 
-  // All tasks sorted by priority (memoized)
+  // All tasks sorted by priority (completed tasks at bottom)
   const sortedAllTasks = useMemo(() => {
     const priorityOrder = { high: 1, medium: 2, low: 3 };
     return [...tasks].sort((a, b) => {
+      // Completed tasks go to the bottom
+      if (a.status === 'completed' && b.status !== 'completed') return 1;
+      if (a.status !== 'completed' && b.status === 'completed') return -1;
       return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
     });
   }, [tasks]);
