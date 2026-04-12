@@ -29,17 +29,6 @@ import {
 } from '@/components/ui/select';
 import { AddTaskForm } from '@/components/AddTaskForm';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import {
   Tabs,
   TabsContent,
   TabsList,
@@ -47,7 +36,6 @@ import {
 } from '@/components/ui/tabs';
 import {
   Plus,
-  Trash2,
   Edit2,
   Calendar,
   Clock,
@@ -133,7 +121,7 @@ const getDeadlineInfo = (task: Task, t: (key: string, opts?: Record<string, stri
 
 export default function TasksPage() {
   const router = useRouter();
-  const { tasks, loading, addTask, updateTask, deleteTask, clearCompleted, fetchTasks } = useTasks();
+  const { tasks, loading, addTask, updateTask, deleteTask, fetchTasks } = useTasks();
   const { t } = useLanguage();
   
   // View state
@@ -141,7 +129,6 @@ export default function TasksPage() {
   
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [showClearDialog, setShowClearDialog] = useState(false);
   const [showPlanDialog, setShowPlanDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
   const [planningTaskId, setPlanningTaskId] = useState<string | null>(null);
@@ -344,13 +331,6 @@ export default function TasksPage() {
   const handleDeleteTask = async (taskId: string) => {
     await deleteTask(taskId);
     toast.success(t('tasks.taskDeleted'));
-  };
-
-  const handleClearCompleted = async () => {
-    const completedIds = tasks.filter(t => t.status === 'completed').map(t => t.id);
-    await clearCompleted(completedIds);
-    setShowClearDialog(false);
-    toast.success(t('tasks.cleared'));
   };
 
   // Render task card with detailed info - clickable to view detail
@@ -861,34 +841,6 @@ export default function TasksPage() {
               </div>
             )}
           </div>
-
-          {/* Clear Completed */}
-          {overallStats.completed > 0 && (
-            <div className="flex justify-center">
-              <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="text-muted-foreground">
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    {t('tasks.clearCompleted')}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>{t('tasks.confirmClear')}</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      {t('tasks.confirmClearDesc')}
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleClearCompleted} className="bg-destructive">
-                      {t('common.delete')}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          )}
         </TabsContent>
       </Tabs>
 
