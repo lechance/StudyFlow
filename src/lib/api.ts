@@ -183,6 +183,37 @@ export const subtasksApi = {
     fetchApi(`/subtasks?id=${id}`, { method: 'DELETE' }),
 };
 
+// 存储设置 API
+export const storageApi = {
+  getSettings: () =>
+    fetchApi<any>('/storage/settings'),
+
+  saveSettings: (data: {
+    endpoint_url?: string;
+    access_key?: string;
+    secret_key?: string;
+    bucket_name?: string;
+    region?: string;
+    enabled?: boolean;
+  }) =>
+    fetchApi<any>('/storage/settings', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  testConnection: (data: {
+    endpoint_url: string;
+    access_key: string;
+    secret_key: string;
+    bucket_name: string;
+    region?: string;
+  }) =>
+    fetchApi<any>('/storage/connection-test', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+
 // Combined API object for easier access
 export const api = {
   get: async <T = any>(endpoint: string): Promise<ApiResponse<T>> => {

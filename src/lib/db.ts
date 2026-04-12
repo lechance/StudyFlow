@@ -176,6 +176,22 @@ function initializeTables(database: Database.Database) {
         expires_at TEXT NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id)
       );
+
+      -- S3 存储配置表
+      CREATE TABLE IF NOT EXISTS storage_settings (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL UNIQUE,
+        provider TEXT DEFAULT 's3',
+        endpoint_url TEXT,
+        access_key TEXT,
+        secret_key TEXT,
+        bucket_name TEXT,
+        region TEXT DEFAULT 'us-east-1',
+        enabled INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users(id)
+      );
     `);
     console.log('Database tables initialized successfully');
   } catch (error) {

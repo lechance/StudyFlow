@@ -3,15 +3,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/lib/i18n';
-import { usersApi } from '@/lib/api';
+import { usersApi, storageApi } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
-import { User, Mail, Signature, Lock, Loader2, CheckCircle2, AlertCircle, CheckCircle } from 'lucide-react';
+import { User, Mail, Signature, Lock, Loader2, CheckCircle2, AlertCircle, CheckCircle, HardDrive, Wifi, WifiOff } from 'lucide-react';
 
 // 密码强度计算函数
 function getPasswordStrength(password: string): { level: number; label: string; color: string } {
@@ -35,7 +36,7 @@ export default function SettingsPage() {
   const { t } = useLanguage();
 
   const [loading, setLoading] = useState(false);
-  const [activeSection, setActiveSection] = useState<'profile' | 'password'>('profile');
+  const [activeSection, setActiveSection] = useState<'profile' | 'password' | 'storage'>('profile');
 
   // Profile form
   const [username, setUsername] = useState('');
@@ -46,6 +47,16 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Storage form
+  const [storageEnabled, setStorageEnabled] = useState(false);
+  const [endpointUrl, setEndpointUrl] = useState('');
+  const [accessKey, setAccessKey] = useState('');
+  const [secretKey, setSecretKey] = useState('');
+  const [bucketName, setBucketName] = useState('');
+  const [region, setRegion] = useState('us-east-1');
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [connectionMessage, setConnectionMessage] = useState('');
 
   // 计算密码强度
   const passwordStrength = useMemo(() => getPasswordStrength(newPassword), [newPassword]);
@@ -64,6 +75,96 @@ export default function SettingsPage() {
       setSignature(user.signature || '');
     }
   }, [user]);
+
+  // Load storage settings
+  useEffect(() => {
+    if (activeSection === 'storage' && user) {
+      loadStorageSettings();
+    }
+  }, [activeSection, user]);
+
+  const loadStorageSettings = async () => {
+    try {
+      const res = await storageApi.getSettings();
+      if (res.success && res.data) {
+        setEndpointUrl(res.data.endpoint_url || '');
+        setAccessKey(res.data.access_key || '');
+        setBucketName(res.data.bucket_name || '');
+        setRegion(res.data.region || 'us-east-1');
+        setStorageEnabled(res.data.enabled === 1);
+        setConnectionStatus(res.data.endpoint_url ? 'success' : 'idle');
+      }
+    } catch (error) {
+      console.error('Failed to load storage settings:', error);
+    }
+  };
+
+  // Test storage connection
+  const handleTestConnection = async () => {
+    if (!endpointUrl || !accessKey || !secretKey || !bucketName) {
+      toast.error(t('settings.storageRequired') || '请填写完整的 S3 配置信息');
+      return;
+    }
+
+    setConnectionStatus('testing');
+    setConnectionMessage('');
+    
+    try {
+      const res = await storageApi.testConnection({
+        endpoint_url: endpointUrl,
+        access_key: accessKey,
+        secret_key: secretKey,
+        bucket_name: bucketName,
+        region: region
+      });
+
+      if (res.success) {
+        setConnectionStatus('success');
+        setConnectionMessage(res.message || '连接成功');
+        toast.success(t('settings.connectionSuccess') || '连接成功');
+      } else {
+        setConnectionStatus('error');
+        setConnectionMessage(res.error || '连接失败');
+        toast.error(res.error || t('settings.connectionFailed') || '连接失败');
+      }
+    } catch {
+      setConnectionStatus('error');
+      setConnectionMessage(t('settings.connectionFailed') || '连接失败');
+      toast.error(t('settings.connectionFailed') || '连接失败');
+    }
+  };
+
+  // Save storage settings
+  const handleSaveStorage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!endpointUrl || !accessKey || !secretKey || !bucketName) {
+      toast.error(t('settings.storageRequired') || '请填写完整的 S3 配置信息');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await storageApi.saveSettings({
+        endpoint_url: endpointUrl,
+        access_key: accessKey,
+        secret_key: secretKey,
+        bucket_name: bucketName,
+        region: region,
+        enabled: storageEnabled
+      });
+
+      if (res.success) {
+        toast.success(t('settings.storageSaved') || '存储设置已保存');
+      } else {
+        toast.error(res.error || t('common.error'));
+      }
+    } catch {
+      toast.error(t('common.error'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Update profile
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -175,6 +276,15 @@ export default function SettingsPage() {
         >
           <Lock className="w-4 h-4" />
           {t('settings.password') || '修改密码'}
+        </Button>
+        <Button
+          variant={activeSection === 'storage' ? 'default' : 'ghost'}
+          size="sm"
+          onClick={() => setActiveSection('storage')}
+          className="gap-2"
+        >
+          <HardDrive className="w-4 h-4" />
+          {t('settings.storage') || '数据存储'}
         </Button>
       </div>
 
@@ -382,6 +492,187 @@ export default function SettingsPage() {
                   </>
                 )}
               </Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Storage Section */}
+      {activeSection === 'storage' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <HardDrive className="w-5 h-5" />
+              {t('settings.storageConfig') || 'S3 存储配置'}
+            </CardTitle>
+            <CardDescription>
+              {t('settings.storageDesc') || '配置 S3 兼容的对象存储服务，实现数据持久化'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSaveStorage} className="space-y-4">
+              {/* Enable Switch */}
+              <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <HardDrive className="w-5 h-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">{t('settings.enableStorage') || '启用 S3 存储'}</p>
+                    <p className="text-xs text-muted-foreground">{t('settings.enableStorageDesc') || '启用后将使用 S3 存储您的数据'}</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={storageEnabled}
+                  onCheckedChange={setStorageEnabled}
+                />
+              </div>
+
+              {/* Endpoint URL */}
+              <div className="space-y-2">
+                <Label htmlFor="endpoint-url">{t('settings.endpointUrl') || 'Endpoint URL'}</Label>
+                <Input
+                  id="endpoint-url"
+                  value={endpointUrl}
+                  onChange={(e) => {
+                    setEndpointUrl(e.target.value);
+                    setConnectionStatus('idle');
+                  }}
+                  placeholder="https://s3.amazonaws.com 或 https://oss-cn-*.aliyuncs.com"
+                  disabled={!storageEnabled}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('settings.endpointHint') || '支持 AWS S3、阿里云 OSS、MinIO 等 S3 兼容存储'}
+                </p>
+              </div>
+
+              {/* Access Key */}
+              <div className="space-y-2">
+                <Label htmlFor="access-key">{t('settings.accessKey') || 'Access Key'}</Label>
+                <Input
+                  id="access-key"
+                  value={accessKey}
+                  onChange={(e) => {
+                    setAccessKey(e.target.value);
+                    setConnectionStatus('idle');
+                  }}
+                  placeholder={t('settings.enterAccessKey') || '请输入 Access Key'}
+                  disabled={!storageEnabled}
+                />
+              </div>
+
+              {/* Secret Key */}
+              <div className="space-y-2">
+                <Label htmlFor="secret-key">{t('settings.secretKey') || 'Secret Key'}</Label>
+                <Input
+                  id="secret-key"
+                  type="password"
+                  value={secretKey}
+                  onChange={(e) => {
+                    setSecretKey(e.target.value);
+                    setConnectionStatus('idle');
+                  }}
+                  placeholder={t('settings.enterSecretKey') || '请输入 Secret Key'}
+                  disabled={!storageEnabled}
+                />
+              </div>
+
+              {/* Bucket Name */}
+              <div className="space-y-2">
+                <Label htmlFor="bucket-name">{t('settings.bucketName') || 'Bucket 名称'}</Label>
+                <Input
+                  id="bucket-name"
+                  value={bucketName}
+                  onChange={(e) => {
+                    setBucketName(e.target.value);
+                    setConnectionStatus('idle');
+                  }}
+                  placeholder={t('settings.enterBucketName') || '请输入 Bucket 名称'}
+                  disabled={!storageEnabled}
+                />
+              </div>
+
+              {/* Region */}
+              <div className="space-y-2">
+                <Label htmlFor="region">{t('settings.region') || '区域'}</Label>
+                <Input
+                  id="region"
+                  value={region}
+                  onChange={(e) => {
+                    setRegion(e.target.value);
+                    setConnectionStatus('idle');
+                  }}
+                  placeholder="us-east-1"
+                  disabled={!storageEnabled}
+                />
+              </div>
+
+              {/* Connection Status */}
+              <div className={`p-4 rounded-lg flex items-center gap-3 ${
+                connectionStatus === 'success' ? 'bg-emerald-500/10' :
+                connectionStatus === 'error' ? 'bg-red-500/10' :
+                'bg-muted/50'
+              }`}>
+                {connectionStatus === 'success' ? (
+                  <Wifi className="w-5 h-5 text-emerald-500" />
+                ) : connectionStatus === 'error' ? (
+                  <WifiOff className="w-5 h-5 text-red-500" />
+                ) : (
+                  <HardDrive className="w-5 h-5 text-muted-foreground" />
+                )}
+                <div className="flex-1">
+                  <p className={`font-medium ${
+                    connectionStatus === 'success' ? 'text-emerald-600' :
+                    connectionStatus === 'error' ? 'text-red-600' :
+                    ''
+                  }`}>
+                    {connectionStatus === 'success' ? (t('settings.connected') || '已连接') :
+                     connectionStatus === 'error' ? (t('settings.connectionFailed') || '连接失败') :
+                     (t('settings.notConnected') || '未连接')}
+                  </p>
+                  {connectionMessage && (
+                    <p className="text-xs text-muted-foreground">{connectionMessage}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-2">
+                <Button 
+                  type="button"
+                  variant="outline"
+                  onClick={handleTestConnection}
+                  disabled={!storageEnabled || connectionStatus === 'testing' || !endpointUrl || !accessKey || !secretKey || !bucketName}
+                  className="gap-2"
+                >
+                  {connectionStatus === 'testing' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {t('settings.testing') || '测试中...'}
+                    </>
+                  ) : (
+                    <>
+                      <Wifi className="w-4 h-4" />
+                      {t('settings.testConnection') || '测试连接'}
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={loading || !storageEnabled}
+                  className="gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      {t('common.loading')}
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      {t('settings.save') || '保存'}
+                    </>
+                  )}
+                </Button>
+              </div>
             </form>
           </CardContent>
         </Card>
