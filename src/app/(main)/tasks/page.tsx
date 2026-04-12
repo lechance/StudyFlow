@@ -340,13 +340,11 @@ export default function TasksPage() {
     if (status === 'completed') {
       toast.success(t('common.greatJob'));
     }
-    await fetchTasks(true);
   };
 
   const handleDeleteTask = async (taskId: string) => {
     await deleteTask(taskId);
     toast.success(t('tasks.taskDeleted'));
-    await fetchTasks(true);
   };
 
   const handleClearCompleted = async () => {
@@ -354,7 +352,6 @@ export default function TasksPage() {
     await clearCompleted(completedIds);
     setShowClearDialog(false);
     toast.success(t('tasks.cleared'));
-    await fetchTasks(true);
   };
 
   // Render task card with detailed info - clickable to view detail
