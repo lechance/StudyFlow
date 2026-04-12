@@ -152,6 +152,12 @@ export const usersApi = {
   getAll: () =>
     fetchApi<any[]>('/users'),
 
+  update: (id: string, data: { username?: string; email?: string; signature?: string; password?: string }) =>
+    fetchApi<any>(`/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
   delete: (id: string) =>
     fetchApi(`/users/${id}`, { method: 'DELETE' }),
 };

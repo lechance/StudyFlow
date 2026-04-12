@@ -7,6 +7,7 @@ interface User {
   id: string;
   username: string;
   email?: string;
+  signature?: string;
   role: 'admin' | 'user';
   avatar?: string;
   streak_days: number;

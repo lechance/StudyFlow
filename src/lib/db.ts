@@ -71,6 +71,7 @@ function initializeTables(database: Database.Database) {
         username TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         email TEXT,
+        signature TEXT,
         role TEXT DEFAULT 'user',
         avatar TEXT,
         streak_days INTEGER DEFAULT 0,

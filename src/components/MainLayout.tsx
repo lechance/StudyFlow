@@ -28,6 +28,7 @@ import {
   Palette,
   ChevronUp,
   History,
+  Settings,
 } from 'lucide-react';
 
 function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
@@ -42,6 +43,7 @@ function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
     { label: t('nav.pomodoro'), href: '/pomodoro', icon: Timer },
     { label: t('nav.stats'), href: '/stats', icon: BarChart3 },
     { label: t('nav.recycle'), href: '/recycle', icon: Trash2 },
+    { label: t('nav.settings'), href: '/settings', icon: Settings },
   ];
 
   return (

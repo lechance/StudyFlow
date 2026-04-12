@@ -2,6 +2,104 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import type { ApiResponse } from '@/lib/types';
+import bcrypt from 'bcryptjs';
+
+// 更新用户信息
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: '请先登录'
+      }, { status: 401 });
+    }
+
+    const { id } = await params;
+
+    // 只允许用户修改自己的信息
+    if (id !== user.id) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: '权限不足'
+      }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const db = getDb();
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    // 更新用户名
+    if (body.username !== undefined) {
+      // 检查用户名是否已被占用
+      const existingUser = db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').get(body.username, id);
+      if (existingUser) {
+        return NextResponse.json<ApiResponse>({
+          success: false,
+          error: '用户名已被占用'
+        }, { status: 400 });
+      }
+      updates.push('username = ?');
+      values.push(body.username);
+    }
+
+    // 更新签名
+    if (body.signature !== undefined) {
+      updates.push('signature = ?');
+      values.push(body.signature || null);
+    }
+
+    // 更新密码
+    if (body.password !== undefined) {
+      if (body.password.length < 6) {
+        return NextResponse.json<ApiResponse>({
+          success: false,
+          error: '密码长度至少6位'
+        }, { status: 400 });
+      }
+      const hashedPassword = await bcrypt.hash(body.password, 10);
+      updates.push('password = ?');
+      values.push(hashedPassword);
+    }
+
+    // 更新邮箱
+    if (body.email !== undefined) {
+      updates.push('email = ?');
+      values.push(body.email || null);
+    }
+
+    if (updates.length === 0) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: '没有需要更新的字段'
+      }, { status: 400 });
+    }
+
+    updates.push('updated_at = datetime(\'now\')');
+    values.push(id);
+
+    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+
+    const updatedUser = db.prepare('SELECT id, username, email, signature, role, avatar, streak_days, total_study_time, created_at FROM users WHERE id = ?').get(id);
+
+    return NextResponse.json<ApiResponse>({
+      success: true,
+      data: updatedUser,
+      message: '用户信息更新成功'
+    });
+  } catch (error) {
+    console.error('Update user error:', error);
+    return NextResponse.json<ApiResponse>({
+      success: false,
+      error: '更新用户信息失败'
+    }, { status: 500 });
+  }
+}
 
 // 删除用户（管理员）
 export async function DELETE(

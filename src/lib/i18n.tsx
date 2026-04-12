@@ -79,6 +79,7 @@ const zh: Record<string, string> = {
   'nav.stats': '数据统计',
   'nav.recycle': '回收站',
   'nav.admin': '用户管理',
+  'nav.settings': '账户设置',
 
   // Dashboard
   'dashboard.greeting': '你好，{username}！',
@@ -378,6 +379,38 @@ const zh: Record<string, string> = {
   'history.daysAgo': '天前',
   'history.weeksAgo': '周前',
   'history.monthsAgo': '个月前',
+
+  // Settings
+  'settings.title': '账户设置',
+  'settings.subtitle': '管理您的个人信息和密码',
+  'settings.profile': '个人信息',
+  'settings.password': '修改密码',
+  'settings.profileInfo': '个人信息',
+  'settings.profileDesc': '更新您的个人资料信息',
+  'settings.username': '用户名',
+  'settings.enterUsername': '请输入用户名',
+  'settings.email': '邮箱',
+  'settings.enterEmail': '请输入邮箱（选填）',
+  'settings.signature': '个性签名',
+  'settings.enterSignature': '介绍一下自己吧（选填）',
+  'settings.save': '保存',
+  'settings.profileUpdated': '个人信息已更新',
+  'settings.usernameRequired': '用户名不能为空',
+  'settings.changePassword': '修改密码',
+  'settings.passwordDesc': '更新您的账户密码',
+  'settings.currentPassword': '当前密码',
+  'settings.enterCurrentPassword': '请输入当前密码',
+  'settings.newPassword': '新密码',
+  'settings.enterNewPassword': '请输入新密码（至少6位）',
+  'settings.confirmPassword': '确认密码',
+  'settings.enterConfirmPassword': '请再次输入新密码',
+  'settings.updatePassword': '更新密码',
+  'settings.passwordUpdated': '密码已更新',
+  'settings.currentPasswordRequired': '请输入当前密码',
+  'settings.passwordMinLength': '新密码长度至少6位',
+  'settings.passwordMismatch': '两次输入的密码不一致',
+  'settings.streakDays': '连续打卡',
+  'settings.minutes': '分钟学习',
 };
 
 // English translations
@@ -422,6 +455,7 @@ const en: Record<string, string> = {
   'nav.stats': 'Statistics',
   'nav.recycle': 'Recycle Bin',
   'nav.admin': 'Admin',
+  'nav.settings': 'Settings',
 
   // Dashboard
   'dashboard.greeting': 'Hello, {username}!',
@@ -754,6 +788,38 @@ const en: Record<string, string> = {
   'history.daysAgo': ' days ago',
   'history.weeksAgo': ' weeks ago',
   'history.monthsAgo': ' months ago',
+
+  // Settings
+  'settings.title': 'Account Settings',
+  'settings.subtitle': 'Manage your profile and password',
+  'settings.profile': 'Profile',
+  'settings.password': 'Password',
+  'settings.profileInfo': 'Profile Information',
+  'settings.profileDesc': 'Update your personal information',
+  'settings.username': 'Username',
+  'settings.enterUsername': 'Enter username',
+  'settings.email': 'Email',
+  'settings.enterEmail': 'Enter email (optional)',
+  'settings.signature': 'Signature',
+  'settings.enterSignature': 'Tell us about yourself (optional)',
+  'settings.save': 'Save',
+  'settings.profileUpdated': 'Profile updated',
+  'settings.usernameRequired': 'Username is required',
+  'settings.changePassword': 'Change Password',
+  'settings.passwordDesc': 'Update your account password',
+  'settings.currentPassword': 'Current Password',
+  'settings.enterCurrentPassword': 'Enter current password',
+  'settings.newPassword': 'New Password',
+  'settings.enterNewPassword': 'Enter new password (min 6 characters)',
+  'settings.confirmPassword': 'Confirm Password',
+  'settings.enterConfirmPassword': 'Confirm new password',
+  'settings.updatePassword': 'Update Password',
+  'settings.passwordUpdated': 'Password updated',
+  'settings.currentPasswordRequired': 'Please enter current password',
+  'settings.passwordMinLength': 'Password must be at least 6 characters',
+  'settings.passwordMismatch': 'Passwords do not match',
+  'settings.streakDays': 'Streak Days',
+  'settings.minutes': 'Minutes',
 };
 
 const translations = { 'zh-CN': zh, 'en': en };
