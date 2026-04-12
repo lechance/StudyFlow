@@ -3,15 +3,14 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTasks } from '@/hooks/useTasks';
-import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/lib/i18n';
+import type { Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Progress } from '@/components/ui/progress';
 import {
   Dialog,
   DialogContent,
@@ -56,16 +55,13 @@ import {
   PlayCircle,
   Sparkles,
   ListTodo,
-  X,
   Pin,
   PinOff,
   Target,
-  ChevronRight,
   AlertCircle,
   CalendarDays,
   Timer
 } from 'lucide-react';
-import { api } from '@/lib/api';
 import { tasksApi } from '@/lib/api';
 import { format, differenceInDays, isPast, isToday, isTomorrow, addDays } from 'date-fns';
 import { toast } from 'sonner';
@@ -77,6 +73,62 @@ const PRIORITY_CONFIG: Record<string, { labelKey: string; textColor: string; bgC
 };
 
 type ViewTab = 'today' | 'week' | 'all';
+
+// Extract getDeadlineInfo outside component to avoid recreation on every render
+const getDeadlineInfo = (task: Task, t: (key: string, opts?: Record<string, string | number>) => string) => {
+  const deadline = task.deadline || task.plan_date;
+  if (!deadline) return null;
+  
+  const deadlineDate = new Date(deadline);
+  const isTodayDate = isToday(deadlineDate);
+  const isTomorrowDate = isTomorrow(deadlineDate);
+  const isPastDate = isPast(deadlineDate);
+  const days = differenceInDays(deadlineDate, new Date());
+  
+  if (isPastDate && !isTodayDate) {
+    return { 
+      text: t('tasks.overdue', { days: Math.abs(days) }), 
+      color: 'text-red-600 bg-red-50 dark:bg-red-950/30',
+      borderColor: 'border-red-300',
+      urgent: true,
+      icon: <AlertCircle className="w-3 h-3" />
+    };
+  }
+  if (isTodayDate) {
+    return { 
+      text: t('tasks.today'),
+      color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/30',
+      borderColor: 'border-orange-300',
+      urgent: true,
+      icon: <Clock className="w-3 h-3" />
+    };
+  }
+  if (isTomorrowDate) {
+    return { 
+      text: t('tasks.tomorrow'),
+      color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-950/30',
+      borderColor: 'border-yellow-300',
+      urgent: false,
+      icon: <Calendar className="w-3 h-3" />
+    };
+  }
+  if (days <= 3) {
+    return { 
+      text: t('tasks.daysLeft', { days }), 
+      color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/30',
+      borderColor: 'border-orange-300',
+      urgent: true,
+      icon: <Clock className="w-3 h-3" />
+    };
+  }
+  return { 
+    text: format(deadlineDate, 'MM/dd'),
+    color: 'text-muted-foreground bg-muted/50',
+    borderColor: 'border-muted',
+    urgent: false,
+    icon: <Calendar className="w-3 h-3" />
+  };
+};
 
 export default function TasksPage() {
   const router = useRouter();
@@ -90,7 +142,7 @@ export default function TasksPage() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [showPlanDialog, setShowPlanDialog] = useState(false);
-  const [editingTask, setEditingTask] = useState<any>(null);
+  const [editingTask, setEditingTask] = useState<Partial<Task> | null>(null);
   const [planningTaskId, setPlanningTaskId] = useState<string | null>(null);
   const [selectedPlanDate, setSelectedPlanDate] = useState<string>('');
   
@@ -115,13 +167,28 @@ export default function TasksPage() {
     return tasks.filter(task => task.plan_date === todayStr);
   }, [tasks, todayStr]);
 
+  // Week tasks with memoized sorting
   const weekTasks = useMemo(() => {
     const today = new Date();
     const weekEnd = addDays(today, 7);
-    return tasks.filter(task => {
+    const filtered = tasks.filter(task => {
       if (!task.plan_date) return false;
       const planDate = new Date(task.plan_date);
       return planDate >= today && planDate <= weekEnd;
+    });
+    // Sort by plan_date once
+    return filtered.sort((a, b) => {
+      if (!a.plan_date) return 1;
+      if (!b.plan_date) return -1;
+      return a.plan_date.localeCompare(b.plan_date);
+    });
+  }, [tasks]);
+
+  // All tasks sorted by priority (memoized)
+  const sortedAllTasks = useMemo(() => {
+    const priorityOrder = { high: 1, medium: 2, low: 3 };
+    return [...tasks].sort((a, b) => {
+      return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
     });
   }, [tasks]);
 
@@ -250,7 +317,7 @@ export default function TasksPage() {
   };
 
   const handleUpdateTask = async () => {
-    if (!editingTask) return;
+    if (!editingTask || !editingTask.id) return;
 
     const success = await updateTask(editingTask.id, {
       title: editingTask.title,
@@ -258,7 +325,7 @@ export default function TasksPage() {
       priority: editingTask.priority,
       deadline: editingTask.deadline || undefined,
       plan_date: editingTask.plan_date || undefined,
-      estimated_time: editingTask.estimated_time ? parseInt(editingTask.estimated_time) : undefined
+      estimated_time: editingTask.estimated_time
     });
 
     if (success) {
@@ -291,68 +358,12 @@ export default function TasksPage() {
     await fetchTasks();
   };
 
-  // Get deadline info
-  const getDeadlineInfo = (task: any) => {
-    const deadline = task.deadline || task.plan_date;
-    if (!deadline) return null;
-    
-    const deadlineDate = new Date(deadline);
-    const isTodayDate = isToday(deadlineDate);
-    const isTomorrowDate = isTomorrow(deadlineDate);
-    const isPastDate = isPast(deadlineDate);
-    const days = differenceInDays(deadlineDate, new Date());
-    
-    if (isPastDate && !isTodayDate) {
-      return { 
-        text: t('tasks.overdue', { days: Math.abs(days) }), 
-        color: 'text-red-600 bg-red-50 dark:bg-red-950/30',
-        borderColor: 'border-red-300',
-        urgent: true,
-        icon: <AlertCircle className="w-3 h-3" />
-      };
-    }
-    if (isTodayDate) {
-      return { 
-        text: t('tasks.today'),
-        color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/30',
-        borderColor: 'border-orange-300',
-        urgent: true,
-        icon: <Clock className="w-3 h-3" />
-      };
-    }
-    if (isTomorrowDate) {
-      return { 
-        text: t('tasks.tomorrow'),
-        color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-950/30',
-        borderColor: 'border-yellow-300',
-        urgent: false,
-        icon: <Calendar className="w-3 h-3" />
-      };
-    }
-    if (days <= 3) {
-      return { 
-        text: t('tasks.daysLeft', { days }), 
-        color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/30',
-        borderColor: 'border-orange-300',
-        urgent: true,
-        icon: <Clock className="w-3 h-3" />
-      };
-    }
-    return { 
-      text: format(deadlineDate, 'MM/dd'),
-      color: 'text-muted-foreground bg-muted/50',
-      borderColor: 'border-muted',
-      urgent: false,
-      icon: <Calendar className="w-3 h-3" />
-    };
-  };
-
   // Render task card with detailed info - clickable to view detail
-  const renderTaskCard = (task: any, showPlanInfo: boolean = false, isTodayTask: boolean = false) => {
+  const renderTaskCard = (task: Task, showPlanInfo: boolean = false, isTodayTask: boolean = false) => {
     const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
     const hasSubtasks = (task.subtask_total || 0) > 0;
     const subtaskProgress = Math.min(100, task.subtask_progress || 0);
-    const deadlineInfo = getDeadlineInfo(task);
+    const deadlineInfo = getDeadlineInfo(task, t);
     const isCompleted = task.status === 'completed';
     const completedSubtasks = task.subtask_completed || 0;
     const totalSubtasks = task.subtask_total || 0;
@@ -813,13 +824,7 @@ export default function TasksPage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {weekTasks
-                  .sort((a, b) => {
-                    if (!a.plan_date) return 1;
-                    if (!b.plan_date) return -1;
-                    return a.plan_date.localeCompare(b.plan_date);
-                  })
-                  .map((task) => renderTaskCard(task, true, task.plan_date === todayStr))}
+                {weekTasks.map((task) => renderTaskCard(task, true, task.plan_date === todayStr))}
               </div>
             )}
           </div>
@@ -839,7 +844,7 @@ export default function TasksPage() {
               <CardContent className="space-y-2">
                 {unPlannedTasks.slice(0, 5).map((task) => {
                   const priorityConfig = PRIORITY_CONFIG[task.priority as keyof typeof PRIORITY_CONFIG];
-                  const deadlineInfo = getDeadlineInfo(task);
+                  const deadlineInfo = getDeadlineInfo(task, t);
                   return (
                     <div 
                       key={task.id}
@@ -907,12 +912,7 @@ export default function TasksPage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {tasks
-                  .sort((a, b) => {
-                    const priorityOrder = { high: 1, medium: 2, low: 3 };
-                    return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
-                  })
-                  .map((task) => renderTaskCard(task, true, task.plan_date === todayStr))}
+                {sortedAllTasks.map((task) => renderTaskCard(task, true, task.plan_date === todayStr))}
               </div>
             )}
           </div>
@@ -979,7 +979,7 @@ export default function TasksPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>{t('tasks.priority')}</Label>
-                  <Select value={editingTask.priority} onValueChange={(v) => setEditingTask({ ...editingTask, priority: v })}>
+                  <Select value={editingTask.priority} onValueChange={(v) => setEditingTask({ ...editingTask, priority: v as 'high' | 'medium' | 'low' })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -1015,7 +1015,7 @@ export default function TasksPage() {
                   type="number"
                   min="1"
                   value={editingTask.estimated_time || ''}
-                  onChange={(e) => setEditingTask({ ...editingTask, estimated_time: e.target.value ? parseInt(e.target.value) : null })}
+                  onChange={(e) => setEditingTask({ ...editingTask, estimated_time: e.target.value ? parseInt(e.target.value) : undefined })}
                 />
               </div>
             </div>
