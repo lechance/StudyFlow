@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { useLanguage } from '@/lib/i18n';
+import versionInfo from '@/lib/version.json';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,15 +19,9 @@ function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
-  const [version, setVersion] = useState('');
 
   useEffect(() => {
     setMounted(true);
-    // 从 build 时生成的 version.json 获取版本号
-    fetch('/api/version')
-      .then(res => res.json())
-      .then(data => setVersion(data.version))
-      .catch(() => setVersion('v1.0.0'));
   }, []);
 
   // Login form
@@ -111,7 +106,7 @@ function LoginForm() {
       
       {/* Version info - bottom left */}
       <div className="fixed bottom-4 left-4 text-xs text-muted-foreground/60">
-        {version}
+        {versionInfo.version}
       </div>
       
       <div className="relative w-full max-w-md">
