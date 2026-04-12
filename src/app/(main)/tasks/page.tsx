@@ -567,7 +567,7 @@ export default function TasksPage() {
               {t('tasks.addTask')}
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
             <DialogHeader>
               <DialogTitle>{t('tasks.newTask')}</DialogTitle>
               <DialogDescription>
@@ -578,6 +578,7 @@ export default function TasksPage() {
               <div className="space-y-2">
                 <Label>{t('tasks.taskName')} *</Label>
                 <Input
+                  autoFocus
                   placeholder={t('common.enterTaskName')}
                   value={newTask.title}
                   onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
@@ -950,7 +951,7 @@ export default function TasksPage() {
 
       {/* Edit Task Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent>
+        <DialogContent onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>{t('tasks.editTask')}</DialogTitle>
           </DialogHeader>
@@ -1029,7 +1030,7 @@ export default function TasksPage() {
 
       {/* Add to Plan Dialog */}
       <Dialog open={showPlanDialog} onOpenChange={setShowPlanDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>{t('tasks.selectDateTitle')}</DialogTitle>
             <DialogDescription>
