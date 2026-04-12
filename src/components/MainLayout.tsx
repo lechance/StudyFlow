@@ -30,6 +30,7 @@ import {
   History,
   Settings,
 } from 'lucide-react';
+import { Toaster } from '@/components/ui/sonner';
 
 function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
   const pathname = usePathname();
@@ -329,6 +330,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <TasksProvider>
+      <Toaster />
       <div className="flex min-h-screen bg-background">
         <Sidebar />
         <div className="flex-1 flex flex-col">
