@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/tabs';
 import {
   Plus,
+  Trash2,
   Edit2,
   Calendar,
   Clock,
