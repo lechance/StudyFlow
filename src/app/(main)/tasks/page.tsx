@@ -206,9 +206,9 @@ export default function TasksPage() {
     return { total, completed, inProgress, pending, highPriority, subtaskTotal, subtaskCompleted };
   }, [tasks]);
 
-  // Get tasks not in any plan
+  // Get tasks not in any plan (including completed tasks for display)
   const unPlannedTasks = useMemo(() => {
-    return tasks.filter(task => !task.plan_date && task.status !== 'completed');
+    return tasks.filter(task => !task.plan_date);
   }, [tasks]);
 
   // Handle task submission from AddTaskForm
