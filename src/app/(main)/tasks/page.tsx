@@ -136,7 +136,7 @@ export default function TasksPage() {
   const [selectedPlanDate, setSelectedPlanDate] = useState<string>('');
   
   // Use transition for dialog state updates to prevent UI blocking
-  const [isPending, startAddDialogTransition] = useTransition();
+  const [, startAddDialogTransition] = useTransition();
   const [, startEditDialogTransition] = useTransition();
   const [, startPlanDialogTransition] = useTransition();
 
@@ -163,8 +163,8 @@ export default function TasksPage() {
       planDate.setHours(0, 0, 0, 0);
       return planDate >= today && planDate <= weekEnd;
     });
-    // Sort by plan_date once
-    return filtered.sort((a, b) => {
+    // Sort by plan_date once (use toSorted to avoid mutating filtered)
+    return filtered.toSorted((a, b) => {
       if (!a.plan_date) return 1;
       if (!b.plan_date) return -1;
       return a.plan_date.localeCompare(b.plan_date);
@@ -176,7 +176,7 @@ export default function TasksPage() {
     const priorityOrder = { high: 1, medium: 2, low: 3 };
     return tasks
       .filter(task => task.status !== 'completed')
-      .sort((a, b) => {
+      .toSorted((a, b) => {
         return priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder];
       });
   }, [tasks]);

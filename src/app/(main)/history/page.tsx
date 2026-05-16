@@ -98,8 +98,8 @@ export default function HistoryPage() {
       
       switch (sortField) {
         case 'completed_at':
-          const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-          const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+          const dateA = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+          const dateB = b.completed_at ? new Date(b.completed_at).getTime() : 0;
           comparison = dateA - dateB;
           break;
         case 'title':
@@ -367,10 +367,10 @@ export default function HistoryPage() {
                       <TableCell>
                         <div className="space-y-0.5">
                           <div className="text-sm">
-                            {formatCompletedDate(task.updated_at)}
+                            {formatCompletedDate(task.completed_at)}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {getTimeAgo(task.updated_at)}
+                            {getTimeAgo(task.completed_at)}
                           </div>
                         </div>
                       </TableCell>

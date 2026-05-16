@@ -198,11 +198,12 @@ export default function StatsPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {dailyStats?.map((day: any, index: number) => {
+            {(() => {
               const maxTime = Math.max(...(dailyStats?.map((d: any) => d.total_study_time) || [1]));
+              return dailyStats?.map((day: any, index: number) => {
               const barWidth = maxTime > 0 ? (day.total_study_time / maxTime) * 100 : 0;
               const isTodayDate = isToday(new Date(day.date));
-              
+
               return (
                 <div key={index} className="flex items-center gap-4">
                   <div className="w-20 text-sm text-muted-foreground">
@@ -212,8 +213,8 @@ export default function StatsPage() {
                     <div className="h-8 bg-muted rounded-lg overflow-hidden relative">
                       <div
                         className={`h-full rounded-lg transition-all duration-500 ${
-                          isTodayDate 
-                            ? 'bg-gradient-to-r from-emerald-500 to-cyan-500' 
+                          isTodayDate
+                            ? 'bg-gradient-to-r from-emerald-500 to-cyan-500'
                             : 'bg-emerald-500/60'
                         }`}
                         style={{ width: `${barWidth}%` }}
@@ -232,12 +233,11 @@ export default function StatsPage() {
                   </div>
                 </div>
               );
-            })}
+            })})()}
           </div>
         </CardContent>
       </Card>
 
-      {/* Study Stats Details */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Study Distribution */}
         <Card>

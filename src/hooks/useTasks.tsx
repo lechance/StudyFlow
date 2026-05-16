@@ -18,6 +18,7 @@ interface TasksContextType {
   fetchRecycleBin: () => Promise<void>;
   restoreTask: (taskId: string) => Promise<boolean>;
   clearRecycleBin: () => Promise<boolean>;
+  permanentlyDeleteTask: (taskId: string) => Promise<boolean>;
 }
 
 const TasksContext = createContext<TasksContextType | undefined>(undefined);
@@ -131,6 +132,15 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
+  const permanentlyDeleteTask = async (taskId: string) => {
+    const res = await tasksApi.permanentlyDeleteFromRecycle(taskId);
+    if (res.success) {
+      setRecycleBin(prev => prev.filter(item => item.id !== taskId && item.task_id !== taskId));
+      return true;
+    }
+    return false;
+  };
+
   const clearRecycleBin = async () => {
     const res = await tasksApi.clearRecycleBin();
     if (res.success) {
@@ -153,6 +163,7 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       recycleBin,
       fetchRecycleBin,
       restoreTask,
+      permanentlyDeleteTask,
       clearRecycleBin
     }}>
       {children}

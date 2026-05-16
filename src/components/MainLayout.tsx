@@ -167,6 +167,7 @@ function MobileNav() {
     { label: t('nav.history'), href: '/history', icon: History },
     { label: t('nav.stats'), href: '/stats', icon: BarChart3 },
     { label: t('nav.recycle'), href: '/recycle', icon: Trash2 },
+    { label: t('nav.settings'), href: '/settings', icon: Settings },
   ];
 
   return (

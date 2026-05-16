@@ -31,6 +31,8 @@ interface TimerSettings {
   sessionsBeforeLongBreak: number;
 }
 
+const STORAGE_KEY = 'pomodoro-settings';
+
 const DEFAULT_SETTINGS: TimerSettings = {
   focusDuration: 25,
   shortBreakDuration: 5,
@@ -38,11 +40,29 @@ const DEFAULT_SETTINGS: TimerSettings = {
   sessionsBeforeLongBreak: 4,
 };
 
+function loadSettings(): TimerSettings {
+  if (typeof window === 'undefined') return DEFAULT_SETTINGS;
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return { ...DEFAULT_SETTINGS, ...parsed };
+    }
+  } catch { /* ignore */ }
+  return DEFAULT_SETTINGS;
+}
+
+function saveSettingsToStorage(settings: TimerSettings) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch { /* ignore */ }
+}
+
 export default function PomodoroPage() {
   const { user } = useAuth();
   const { tasks } = useTasks();
   const { t } = useLanguage();
-  const [settings, setSettings] = useState<TimerSettings>(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<TimerSettings>(loadSettings);
   const [mode, setMode] = useState<TimerMode>('focus');
   const [timeLeft, setTimeLeft] = useState(DEFAULT_SETTINGS.focusDuration * 60);
   const [isRunning, setIsRunning] = useState(false);
@@ -55,6 +75,7 @@ export default function PomodoroPage() {
   
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const completeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load today's study time
   const loadTodayStats = useCallback(async () => {
@@ -105,12 +126,17 @@ export default function PomodoroPage() {
       if (mode === 'focus') {
         const newSessions = sessions + 1;
         setSessions(newSessions);
-        
+
         // Record study time
         const duration = settings.focusDuration;
-        studyApi.addRecord(duration, selectedTaskId || undefined);
+        studyApi.addRecord(duration, selectedTaskId || undefined).then(res => {
+          if (!res.success) {
+            setTodayStudyTime((prev) => Math.max(0, prev - duration));
+            toast.error(t('common.error'));
+          }
+        });
         setTodayStudyTime((prev) => prev + duration);
-        
+
         // Check if long break is needed
         if (newSessions % settings.sessionsBeforeLongBreak === 0) {
           setMode('longBreak');
@@ -119,9 +145,9 @@ export default function PomodoroPage() {
           setMode('shortBreak');
           setTimeLeft(settings.shortBreakDuration * 60);
         }
-        
+
         setShowComplete(true);
-        setTimeout(() => setShowComplete(false), 3000);
+        completeTimeoutRef.current = setTimeout(() => setShowComplete(false), 3000);
         toast.success(t('pomodoro.focusComplete'), {
           description: `${t('pomodoro.focusing')} ${duration} ${t('common.minutes')}`
         });
@@ -135,6 +161,10 @@ export default function PomodoroPage() {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
+      }
+      if (completeTimeoutRef.current) {
+        clearTimeout(completeTimeoutRef.current);
+        completeTimeoutRef.current = null;
       }
     };
   }, [isRunning, timeLeft, mode, sessions, settings, selectedTaskId, t]);
@@ -178,6 +208,7 @@ export default function PomodoroPage() {
   // Save settings
   const saveSettings = (newSettings: TimerSettings) => {
     setSettings(newSettings);
+    saveSettingsToStorage(newSettings);
     if (!isRunning) {
       switch (mode) {
         case 'focus': setTimeLeft(newSettings.focusDuration * 60); break;

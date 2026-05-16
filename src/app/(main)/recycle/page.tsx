@@ -28,7 +28,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 export default function RecyclePage() {
-  const { recycleBin, fetchRecycleBin, restoreTask, clearRecycleBin } = useTasks();
+  const { recycleBin, fetchRecycleBin, restoreTask, permanentlyDeleteTask, clearRecycleBin } = useTasks();
   const { t } = useLanguage();
   const [clearing, setClearing] = useState(false);
   const [restoring, setRestoring] = useState<string | null>(null);
@@ -179,7 +179,7 @@ export default function RecyclePage() {
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="hover:text-destructive">
+                        <Button variant="ghost" size="icon" className="hover:text-destructive" aria-label={t('recycle.permanentlyDelete')}>
                           <Trash className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>
@@ -194,8 +194,13 @@ export default function RecyclePage() {
                           <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
                           <AlertDialogAction
                             onClick={async () => {
-                              toast.success(t('recycle.taskPermanentlyDeleted'));
-                              await fetchRecycleBin();
+                              if (!task?.id) return;
+                              const success = await permanentlyDeleteTask(task.id);
+                              if (success) {
+                                toast.success(t('recycle.taskPermanentlyDeleted'));
+                              } else {
+                                toast.error(t('common.error'));
+                              }
                             }}
                             className="bg-destructive"
                           >

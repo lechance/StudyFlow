@@ -51,10 +51,7 @@ function LoginForm() {
       const result = await login(loginUsername, loginPassword);
       
       if (result.success) {
-        // 短暂延迟确保 Cookie 被保存后再跳转
-        setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 100);
+        router.push('/dashboard');
       } else {
         setError(result.error || t('auth.invalidCredentials'));
       }
@@ -84,10 +81,7 @@ function LoginForm() {
     
     const result = await register(regUsername, regPassword, regEmail || undefined);
     if (result.success) {
-      // 短暂延迟确保 Cookie 被保存后再跳转
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 100);
+      router.push('/dashboard');
     } else {
       setError(result.error || t('common.error'));
     }

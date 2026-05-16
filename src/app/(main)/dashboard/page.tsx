@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { statsApi } from '@/lib/api';
+import type { DailyStats } from '@/lib/types';
 import { format } from 'date-fns';
 import {
   BookOpen,
@@ -26,11 +27,18 @@ import {
   Sparkles
 } from 'lucide-react';
 
+interface StatsResponse {
+  dailyStats: DailyStats[];
+  today: DailyStats & { pending_tasks: number };
+  totalStudyTime: number;
+  streakDays: number;
+}
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const { tasks, loading: tasksLoading } = useTasks();
   const { t, language } = useLanguage();
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<StatsResponse | null>(null);
 
   const loadData = useCallback(async () => {
     const statsRes = await statsApi.getStats(7);
